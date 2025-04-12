@@ -16,6 +16,7 @@ using Il2CppScheduleOne.UI.Phone;
 using Il2CppScheduleOne.Messaging;
 using Il2CppScheduleOne.ItemFramework;
 using Il2CppScheduleOne.UI.Handover;
+using Il2CppScheduleOne.Levelling;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 
 [assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.0.0", "xyrilyn", null)]
@@ -57,7 +58,7 @@ namespace DealOptimizer_IL2CPP
                 CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
 
                 // Change price without notifying listeners
-                counterofferInterface.ChangePrice(maxSpend - price);
+                counterofferInterface.ChangePrice((int)(maxSpend - price));
 
                 // Check price against maxSpend again
                 string priceText = counterofferInterface.PriceInput.text;
@@ -349,11 +350,16 @@ namespace DealOptimizer_IL2CPP
             float price = offerData.Price;
             CustomerData customerData = customer.CustomerData;
 
+            FullRank rank = NetworkSingleton<LevelManager>.Instance.GetFullRank();
+            float orderLimitMultiplier = LevelManager.GetOrderLimitMultiplier(rank);
+
             float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(customer.NPC.RelationData.RelationDelta / 5f);
             Il2CppSystem.Collections.Generic.List<EDay> orderDays = customerData.GetOrderDays(customer.CurrentAddiction, customer.NPC.RelationData.RelationDelta / 5f);
             float num = adjustedWeeklySpend / orderDays.Count;
 
             stringBuilder.Append('\n');
+            stringBuilder.Append($"Rank + Tier: {rank.Rank} {rank.Tier}\n");
+            stringBuilder.Append($"Order Limit Multiplier: {orderLimitMultiplier}\n");
             stringBuilder.Append($"Adjusted Weekly Spend: {adjustedWeeklySpend}\n");
             stringBuilder.Append($"Order Days: {orderDays.Count}\n");
             stringBuilder.Append($"Average Daily Spend: {num}\n");
@@ -454,6 +460,13 @@ namespace DealOptimizer_IL2CPP
 
                 // Change price without notifying listeners
                 handoverScreen.PriceSelector.SetPrice(maxSpend);
+
+                // Check price against maxSpend again
+                float price = handoverScreen.PriceSelector.Price;
+                if (!DefinitelyLessThan(price, maxSpend))
+                {
+                    handoverScreen.PriceSelector.SetPrice(maxSpend - 1);
+                }
             }
         }
     }
