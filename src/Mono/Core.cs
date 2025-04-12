@@ -19,7 +19,7 @@ using ScheduleOne.UI.Handover;
 using ScheduleOne.Levelling;
 using static ScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.0.0", "xyrilyn", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.0.1", "xyrilyn", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono

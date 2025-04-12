@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DealOptimizer_Mono", "DealOptimizer_Mono.csproj", "{A8EB10C4-7469-DBEA-C3E0-CCA4173691F5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A8EB10C4-7469-DBEA-C3E0-CCA4173691F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8EB10C4-7469-DBEA-C3E0-CCA4173691F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8EB10C4-7469-DBEA-C3E0-CCA4173691F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8EB10C4-7469-DBEA-C3E0-CCA4173691F5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8687B3B0-07A9-4DB7-9BA0-E258D1AE9908}
+	EndGlobalSection
+EndGlobal
