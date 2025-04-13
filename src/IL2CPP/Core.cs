@@ -195,7 +195,7 @@ namespace DealOptimizer_IL2CPP
         [HarmonyPatch(typeof(CounterOfferProductSelector), nameof(CounterOfferProductSelector.ProductSelected))]
         static class CounterOfferProductSelectorPostfixProductSelected
         {
-            static void Postfix(ProductDefinition product)
+            static void Postfix(ProductDefinition def)
             {
                 OptimizeThenCheck();
             }

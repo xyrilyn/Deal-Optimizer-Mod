@@ -195,7 +195,7 @@ namespace DealOptimizer_Mono
         [HarmonyPatch(typeof(CounterOfferProductSelector), "ProductSelected")]
         static class CounterOfferProductSelectorPostfixProductSelected
         {
-            static void Postfix(ProductDefinition product)
+            static void Postfix(ProductDefinition def)
             {
                 OptimizeThenCheck();
             }
@@ -261,7 +261,7 @@ namespace DealOptimizer_Mono
             MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
 
             Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
-            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Property("selectedProduct").GetValue<ProductDefinition>();
+            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Field("selectedProduct").GetValue<ProductDefinition>();
             string quantityText = messagesApp.CounterofferInterface.ProductLabel.text;
             int quantity = int.Parse(quantityText.Split("x ")[0]);
             string priceText = messagesApp.CounterofferInterface.PriceInput.text;
