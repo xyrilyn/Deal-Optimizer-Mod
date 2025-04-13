@@ -3,9 +3,7 @@ using HarmonyLib;
 using Il2CppScheduleOne;
 using Il2CppScheduleOne.DevUtilities;
 using Il2CppScheduleOne.Economy;
-using Il2CppScheduleOne.GameTime;
 using Il2CppScheduleOne.ItemFramework;
-using Il2CppScheduleOne.Levelling;
 using Il2CppScheduleOne.Messaging;
 using Il2CppScheduleOne.NPCs;
 using Il2CppScheduleOne.Product;
@@ -19,7 +17,7 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "2.0.2", "zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.1.0", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -46,8 +44,22 @@ namespace DealOptimizer_IL2CPP
                 float quantityMultiplier = Mathf.Lerp(0f, 2f, quantityRatio * 0.5f);
                 float penaltyMultiplier = Mathf.Lerp(1f, 0f, Mathf.Abs(quantityMultiplier - 1f));
 
+                if (newValueProposition * penaltyMultiplier > valueProposition)
+                {
+                    return 1f;
+                }
+                if (newValueProposition < 0.12f)
+                {
+                    return 0f;
+                }
+
                 float customerWeightedValue = productEnjoyment * valueProposition;
                 float proposedWeightedValue = enjoymentNormalized * penaltyMultiplier * newValueProposition;
+
+                if (proposedWeightedValue > customerWeightedValue)
+                {
+                    return 1f;
+                }
 
                 float valueDifference = customerWeightedValue - proposedWeightedValue;
                 float threshold = Mathf.Lerp(0f, 1f, valueDifference / 0.2f);
@@ -72,7 +84,7 @@ namespace DealOptimizer_IL2CPP
                 int low = (int)currentPrice;
                 int high = (int)maxSpend;
                 int bestFailingPrice = (int)currentPrice;
-                int maxIterations = 20;
+                int maxIterations = 30;
                 int iterations = 0;
 
                 Melon<Core>.Logger.Msg($"Binary Search Start - Price: {currentPrice}, MaxSpend: {maxSpend}, Quantity: {quantity}, MinProbability: {minSuccessProbability}");
@@ -142,7 +154,7 @@ namespace DealOptimizer_IL2CPP
         }
 
         [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.Open))]
-        static class CounterofferInterfacePostOpenPatch
+        static class CounterofferInterfacePostfixOpen
         {
             static void Postfix(ProductDefinition product, int quantity, float price, MSGConversation _conversation, Action<ProductDefinition, int, float> _orderConfirmedCallback)
             {
@@ -150,17 +162,20 @@ namespace DealOptimizer_IL2CPP
                 Customer customer = CustomerHelper.GetCustomerFromConversation(_conversation);
                 var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
 
+                CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
+                string priceText = counterofferInterface.PriceInput.text;
+                float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
+
                 int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, price, maxSpend);
 
-                if (optimalPrice > price)
-                {
-                    messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price);
-                }
+                messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price);
+
+                OfferPriceChangeCheckNoLog();
             }
         }
 
         [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangePrice))]
-        static class CounterofferInterfacePostChangePricePatch
+        static class CounterofferInterfacePostfixChangePrice
         {
             static void Postfix(float change)
             {
@@ -169,32 +184,55 @@ namespace DealOptimizer_IL2CPP
         }
 
         [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangeQuantity))]
-        static class CounterofferInterfacePostChangeQuantityPatch
+        static class CounterofferInterfacePostfixChangeQuantity
         {
             static void Postfix(int change)
             {
-                MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
-                if (messagesApp == null || !messagesApp.CounterofferInterface.IsOpen) return;
-
-                Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
-                var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
-
-                CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
-                string quantityText = counterofferInterface.ProductLabel.text;
-                int quantity = int.Parse(quantityText.Split("x ")[0]);
-                string priceText = counterofferInterface.PriceInput.text;
-                float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
-
-                ContractInfo contractOffer = customer.OfferedContractInfo;
-                ProductDefinition product = Registry.GetItem<ProductDefinition>(contractOffer.Products.entries[0].ProductID);
-
-                int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, currentPrice * 0.25f, maxSpend);
-
-                if (optimalPrice > currentPrice || change < 0)
-                {
-                    counterofferInterface.ChangePrice(optimalPrice - (int)currentPrice);
-                }
+                OptimizeThenCheck();
             }
+        }
+
+        [HarmonyPatch(typeof(CounterOfferProductSelector), nameof(CounterOfferProductSelector.ProductSelected))]
+        static class CounterOfferProductSelectorPostfixProductSelected
+        {
+            static void Postfix(ProductDefinition product)
+            {
+                OptimizeThenCheck();
+            }
+        }
+
+        static void OptimizeThenCheck()
+        {
+            MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
+            if (messagesApp == null || !messagesApp.CounterofferInterface.IsOpen) return;
+
+            Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
+            var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
+
+            CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
+            string priceText = counterofferInterface.PriceInput.text;
+            float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
+
+            OfferData currentOfferData = GetCurrentOfferData();
+
+            int optimalPrice = DealCalculator.FindOptimalPrice(
+                customer,
+                currentOfferData.Product,
+                currentOfferData.Quantity,
+                currentOfferData.Product.MarketValue * currentOfferData.Quantity * 0.5f,
+                maxSpend
+                );
+
+            Melon<Core>.Logger.Msg($"Product: {currentOfferData.Product.ID}");
+            Melon<Core>.Logger.Msg($"Quantity: {currentOfferData.Quantity}");
+            Melon<Core>.Logger.Msg($"Market Value: {currentOfferData.Product.MarketValue}");
+            Melon<Core>.Logger.Msg($"Max Spend: {maxSpend}");
+            Melon<Core>.Logger.Msg($"Optimal Price: {optimalPrice}");
+            Melon<Core>.Logger.Msg($"Diff: {optimalPrice - (int)currentPrice}");
+
+            counterofferInterface.ChangePrice(optimalPrice - (int)currentPrice);
+
+            OfferPriceChangeCheckNoLog();
         }
 
         private static bool DefinitelyLessThan(float a, float b)
@@ -218,16 +256,14 @@ namespace DealOptimizer_IL2CPP
             }
         }
 
-        private static OfferData GetOfferData()
+        private static OfferData GetCurrentOfferData()
         {
             MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
-            Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
-            ContractInfo contractOffer = customer.OfferedContractInfo;
-            ProductDefinition product = Registry.GetItem<ProductDefinition>(contractOffer.Products.entries[0].ProductID);
 
+            Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
+            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Property("selectedProduct").GetValue<ProductDefinition>();
             string quantityText = messagesApp.CounterofferInterface.ProductLabel.text;
             int quantity = int.Parse(quantityText.Split("x ")[0]);
-
             string priceText = messagesApp.CounterofferInterface.PriceInput.text;
             float price = priceText == "" ? 0 : float.Parse(priceText);
 
@@ -236,13 +272,13 @@ namespace DealOptimizer_IL2CPP
 
         public static void OfferPriceChangeCheckNoLog()
         {
-            OfferData offerData = GetOfferData();
+            OfferData offerData = GetCurrentOfferData();
             EvaluateCounterOffer(offerData);
         }
 
         private void OfferPriceChangeCheckWithLog()
         {
-            OfferData offerData = GetOfferData();
+            OfferData offerData = GetCurrentOfferData();
             StringBuilder stringBuilder = new StringBuilder();
 
             stringBuilder.Append('\n');
@@ -269,12 +305,12 @@ namespace DealOptimizer_IL2CPP
             float probability = DealCalculator.CalculateSuccessProbability(offerData.Customer, offerData.Product, offerData.Quantity, offerData.Price);
             decimal probabilityPercent = Math.Round((decimal)(probability * 100), 3);
 
-            if (probability >= 0.95f)
+            if (probability >= 1f)
             {
                 DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", $"Price per unit: {offerData.Price / offerData.Quantity}\nMax Spend: {maxSpendDecimal}");
                 return true;
             }
-            else if (probability <= 0.05f)
+            else if (probability <= 0f)
             {
                 DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", $"Price per unit: {offerData.Price / offerData.Quantity}\nMax Spend: {maxSpendDecimal}");
                 return false;
@@ -310,13 +346,13 @@ namespace DealOptimizer_IL2CPP
             stringBuilder.Append('\n');
             stringBuilder.Append($"Success Probability: {probabilityPercent}%\n");
 
-            if (probability >= 0.95f)
+            if (probability >= 1f)
             {
                 stringBuilder.Append("\nGuaranteed Success - high probability of success\n");
                 DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", "");
                 return true;
             }
-            else if (probability <= 0.05f)
+            else if (probability <= 0f)
             {
                 stringBuilder.Append("\nGuaranteed Failure - low probability of success\n");
                 DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", "");
@@ -331,7 +367,7 @@ namespace DealOptimizer_IL2CPP
         }
 
         [HarmonyPatch(typeof(HandoverScreen), nameof(HandoverScreen.Open))]
-        static class HandoverScreenPostOpenPatch
+        static class HandoverScreenPostfixOpen
         {
             static void Postfix(Contract contract, Customer customer, EMode mode, Action<EHandoverOutcome, List<ItemInstance>, float> callback, Func<List<ItemInstance>, float, float> successChanceMethod)
             {
