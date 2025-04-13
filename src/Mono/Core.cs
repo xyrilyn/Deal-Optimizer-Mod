@@ -19,7 +19,7 @@ using ScheduleOne.UI.Handover;
 using ScheduleOne.Levelling;
 using static ScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.0.2", "xyrilyn", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.0.1", "xyrilyn", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono
@@ -61,7 +61,8 @@ namespace DealOptimizer_Mono
                 counterofferInterface.ChangePrice((int)(maxSpend - price));
 
                 // Check price against maxSpend again
-                if (!DefinitelyLessThan(float.Parse(counterofferInterface.PriceInput.text), maxSpend))
+                string priceText = counterofferInterface.PriceInput.text;
+                if (!DefinitelyLessThan(float.Parse(priceText), maxSpend))
                 {
                     counterofferInterface.ChangePrice(-1);
                 }
@@ -70,16 +71,15 @@ namespace DealOptimizer_Mono
                 int iterations = 0;
                 bool success = false;
                 int quantityToTry = quantity;
-                float priceToCheck = float.Parse(counterofferInterface.PriceInput.text);
 
                 while (!success && iterations < 5)
                 {
-                    success = CheckValuePropositionForGuaranteedSuccess(customer, product, quantityToTry, priceToCheck);
+                    success = checkValueProposition(customer, product, quantityToTry, maxSpend);
                     if (!success)
                     {
                         counterofferInterface.ChangeQuantity(1);
-                        quantityToTry += 1;
                     }
+                    quantityToTry += 1;
                     iterations++;
                 }
 
@@ -96,7 +96,7 @@ namespace DealOptimizer_Mono
             return (b - a) > ((Math.Abs(a) < Math.Abs(b) ? Math.Abs(b) : Math.Abs(a)) * 1E-15);
         }
 
-        private static bool CheckValuePropositionForGuaranteedSuccess(Customer customer, ProductDefinition product, int quantity, float price)
+        private static bool checkValueProposition(Customer customer, ProductDefinition product, int quantity, float price)
         {
             CustomerData customerData = customer.CustomerData;
 
@@ -121,18 +121,6 @@ namespace DealOptimizer_Mono
             float num7 = num2 * num5 * valueProposition2;
 
             if (num7 > num6)
-            {
-                return true;
-            }
-
-            float num8 = num6 - num7;
-            float num9 = Mathf.Lerp(0f, 1f, num8 / 0.2f);
-            float t = Mathf.Max(customer.CurrentAddiction, customer.NPC.RelationData.NormalizedRelationDelta);
-            float num10 = Mathf.Lerp(0f, 0.2f, t);
-
-            float thresholdMinusBonus = num9 - num10;
-
-            if (thresholdMinusBonus < 0)
             {
                 return true;
             }
@@ -466,12 +454,12 @@ namespace DealOptimizer_Mono
                 float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(customer.NPC.RelationData.RelationDelta / 5f);
                 List<EDay> orderDays = customerData.GetOrderDays(customer.CurrentAddiction, customer.NPC.RelationData.RelationDelta / 5f);
                 float num = adjustedWeeklySpend / orderDays.Count;
-                float maxSpend = num * 3f;
+                int maxSpend = (int)(num * 3f);
 
                 HandoverScreen handoverScreen = Singleton<HandoverScreen>.Instance;
 
                 // Change price without notifying listeners
-                handoverScreen.PriceSelector.SetPrice((int)maxSpend);
+                handoverScreen.PriceSelector.SetPrice(maxSpend);
 
                 // Check price against maxSpend again
                 float price = handoverScreen.PriceSelector.Price;
