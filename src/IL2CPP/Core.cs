@@ -17,7 +17,7 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.1.0", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.1.1", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -158,28 +158,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(ProductDefinition product, int quantity, float price, MSGConversation _conversation, Action<ProductDefinition, int, float> _orderConfirmedCallback)
             {
-                MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
-                Customer customer = CustomerHelper.GetCustomerFromConversation(_conversation);
-                var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
-
-                CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
-                string priceText = counterofferInterface.PriceInput.text;
-                float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
-
-                int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, price, maxSpend);
-
-                messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price);
-
-                OfferPriceChangeCheckNoLog();
-            }
-        }
-
-        [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangePrice))]
-        static class CounterofferInterfacePostfixChangePrice
-        {
-            static void Postfix(float change)
-            {
-                OfferPriceChangeCheckNoLog();
+                OptimizeInitialOfferThenEvaluate(product, quantity, price, _conversation);
             }
         }
 
@@ -188,7 +167,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(int change)
             {
-                OptimizeThenCheck();
+                OptimizeCounterofferThenEvaluate();
             }
         }
 
@@ -197,14 +176,68 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(ProductDefinition def)
             {
-                OptimizeThenCheck();
+                OptimizeCounterofferThenEvaluate();
             }
         }
 
-        static void OptimizeThenCheck()
+        [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangePrice))]
+        static class CounterofferInterfacePostfixChangePrice
+        {
+            static void Postfix(float change)
+            {
+                EvaluateAfterPriceChange();
+            }
+        }
+
+        private static bool IsEnvironmentValid()
         {
             MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
-            if (messagesApp == null || !messagesApp.CounterofferInterface.IsOpen) return;
+            if (messagesApp == null || !messagesApp.CounterofferInterface.IsOpen)
+            {
+                return false;
+            }
+
+            try
+            {
+                Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
+            }
+            catch (Exception ex)
+            {
+                Melon<Core>.Logger.Error("Exception occurred when checking environment", ex);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void OptimizeInitialOfferThenEvaluate(ProductDefinition product, int quantity, float price, MSGConversation _conversation)
+        {
+            bool valid = IsEnvironmentValid();
+            if (!valid) return;
+
+            MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
+
+            Customer customer = CustomerHelper.GetCustomerFromConversation(_conversation);
+            var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
+
+            CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
+            string priceText = counterofferInterface.PriceInput.text;
+            float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
+
+            int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, price, maxSpend);
+
+            messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price);
+
+            OfferData offerData = GetCurrentOfferData();
+            EvaluateCounterOffer(offerData);
+        }
+
+        private static void OptimizeCounterofferThenEvaluate()
+        {
+            bool valid = IsEnvironmentValid();
+            if (!valid) return;
+
+            MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
 
             Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
             var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
@@ -223,16 +256,19 @@ namespace DealOptimizer_IL2CPP
                 maxSpend
                 );
 
-            Melon<Core>.Logger.Msg($"Product: {currentOfferData.Product.ID}");
-            Melon<Core>.Logger.Msg($"Quantity: {currentOfferData.Quantity}");
-            Melon<Core>.Logger.Msg($"Market Value: {currentOfferData.Product.MarketValue}");
-            Melon<Core>.Logger.Msg($"Max Spend: {maxSpend}");
-            Melon<Core>.Logger.Msg($"Optimal Price: {optimalPrice}");
-            Melon<Core>.Logger.Msg($"Diff: {optimalPrice - (int)currentPrice}");
-
             counterofferInterface.ChangePrice(optimalPrice - (int)currentPrice);
 
-            OfferPriceChangeCheckNoLog();
+            OfferData offerData = GetCurrentOfferData();
+            EvaluateCounterOffer(offerData);
+        }
+
+        private static void EvaluateAfterPriceChange()
+        {
+            bool valid = IsEnvironmentValid();
+            if (!valid) return;
+
+            OfferData offerData = GetCurrentOfferData();
+            EvaluateCounterOffer(offerData);
         }
 
         private static bool DefinitelyLessThan(float a, float b)
@@ -261,19 +297,16 @@ namespace DealOptimizer_IL2CPP
             MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
 
             Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
+
             ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Property("selectedProduct").GetValue<ProductDefinition>();
+
             string quantityText = messagesApp.CounterofferInterface.ProductLabel.text;
             int quantity = int.Parse(quantityText.Split("x ")[0]);
+
             string priceText = messagesApp.CounterofferInterface.PriceInput.text;
             float price = priceText == "" ? 0 : float.Parse(priceText);
 
             return new OfferData(customer, product, quantity, price);
-        }
-
-        public static void OfferPriceChangeCheckNoLog()
-        {
-            OfferData offerData = GetCurrentOfferData();
-            EvaluateCounterOffer(offerData);
         }
 
         private void OfferPriceChangeCheckWithLog()
@@ -394,6 +427,7 @@ namespace DealOptimizer_IL2CPP
 
             LoggerInstance.Msg("Initialized Mod");
         }
+        
         public override void OnGUI()
         {
             bool gameStarted = SceneManager.GetActiveScene() != null && SceneManager.GetActiveScene().name == "Main";
