@@ -17,12 +17,12 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.1.1", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.2.0", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
 {
-    public class Core : MelonMod
+    public partial class Core : MelonMod
     {
         private bool listening = false;
 
@@ -31,7 +31,7 @@ namespace DealOptimizer_IL2CPP
 
         private static class DealCalculator
         {
-            public static float CalculateSuccessProbability(Customer customer, ProductDefinition product, int quantity, float price)
+            public static float CalculateSuccessProbability(Customer customer, ProductDefinition product, int quantity, float price, bool printCalcToConsole = false)
             {
                 CustomerData customerData = customer.CustomerData;
 
@@ -44,38 +44,81 @@ namespace DealOptimizer_IL2CPP
                 float quantityMultiplier = Mathf.Lerp(0f, 2f, quantityRatio * 0.5f);
                 float penaltyMultiplier = Mathf.Lerp(1f, 0f, Mathf.Abs(quantityMultiplier - 1f));
 
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Product Enjoyment              : {productEnjoyment}");
+                    Melon<Core>.Logger.Msg($"Product Enjoyment (Normalized) : {enjoymentNormalized}");
+                    Melon<Core>.Logger.Msg($"Customer Value Proposition     : {valueProposition}");
+                    Melon<Core>.Logger.Msg($"Player Value Proposition       : {newValueProposition}");
+                    Melon<Core>.Logger.Msg($"Qty Change Penalty Multiplier  : {penaltyMultiplier}");
+                }
+
                 if (newValueProposition * penaltyMultiplier > valueProposition)
                 {
+                    if (printCalcToConsole)
+                    {
+                        Melon<Core>.Logger.Msg($"Guaranteed Success - Player Value Proposition > Customer Value Proposition");
+                    }
                     return 1f;
                 }
                 if (newValueProposition < 0.12f)
                 {
+                    if (printCalcToConsole)
+                    {
+                        Melon<Core>.Logger.Msg($"Guaranteed Failure - Player Value Proposition Too Low (<0.12)");
+                    }
                     return 0f;
                 }
 
                 float customerWeightedValue = productEnjoyment * valueProposition;
                 float proposedWeightedValue = enjoymentNormalized * penaltyMultiplier * newValueProposition;
 
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Customer Product Enjoyment-Weighted Value Proposition : {customerWeightedValue}");
+                    Melon<Core>.Logger.Msg($"Player Product Enjoyment-Weighted Value Proposition   : {proposedWeightedValue}");
+                }
+
                 if (proposedWeightedValue > customerWeightedValue)
                 {
+                    if (printCalcToConsole)
+                    {
+                        Melon<Core>.Logger.Msg($"Guaranteed Success - Player Product Enjoyment-Weighted Value Proposition > Customer Product Enjoyment-Weighted Value Proposition");
+                    }
                     return 1f;
                 }
 
                 float valueDifference = customerWeightedValue - proposedWeightedValue;
                 float threshold = Mathf.Lerp(0f, 1f, valueDifference / 0.2f);
                 float bonus = Mathf.Lerp(0f, 0.2f, Mathf.Max(customer.CurrentAddiction, customer.NPC.RelationData.NormalizedRelationDelta));
-
                 float thresholdMinusBonus = threshold - bonus;
+
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Success Threshold : {threshold}");
+                    Melon<Core>.Logger.Msg($"Bonus             : {bonus}");
+                    Melon<Core>.Logger.Msg($"Threshold - Bonus : {thresholdMinusBonus}");
+                }
+
                 return Mathf.Clamp01((0.9f - thresholdMinusBonus) / 0.9f);
             }
 
-            public static (float maxSpend, float dailyAverage) CalculateSpendingLimits(Customer customer)
+            public static (float maxSpend, float dailyAverage) CalculateSpendingLimits(Customer customer, bool printCalcToConsole = false)
             {
                 CustomerData customerData = customer.CustomerData;
                 float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(customer.NPC.RelationData.RelationDelta / 5f);
                 var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, customer.NPC.RelationData.RelationDelta / 5f);
                 float dailyAverage = adjustedWeeklySpend / orderDays.Count;
                 float maxSpend = dailyAverage * 3f;
+
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Adjusted Weekly Spend : {adjustedWeeklySpend}");
+                    Melon<Core>.Logger.Msg($"Order Days Count      : {orderDays.Count}");
+                    Melon<Core>.Logger.Msg($"Daily Average         : {dailyAverage}");
+                    Melon<Core>.Logger.Msg($"Max Spend             : {maxSpend}");
+                }
+
                 return (maxSpend, dailyAverage);
             }
 
@@ -87,7 +130,11 @@ namespace DealOptimizer_IL2CPP
                 int maxIterations = 30;
                 int iterations = 0;
 
-                Melon<Core>.Logger.Msg($"Binary Search Start - Price: {currentPrice}, MaxSpend: {maxSpend}, Quantity: {quantity}, MinProbability: {minSuccessProbability}");
+                bool printCalcToConsole = GetConfigurationFlag(Flags.PrintCalculationsToConsole);
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Binary Search Start - Price: {currentPrice}, MaxSpend: {maxSpend}, Quantity: {quantity}, MinProbability: {minSuccessProbability}");
+                }
 
                 while (iterations < maxIterations && low < high)
                 {
@@ -95,11 +142,14 @@ namespace DealOptimizer_IL2CPP
                     float probability = CalculateSuccessProbability(customer, product, quantity, mid);
                     bool success = probability >= minSuccessProbability;
 
-                    Melon<Core>.Logger.Msg($"Binary Search Iteration {iterations}:");
-                    Melon<Core>.Logger.Msg($"  Testing price: {mid}");
-                    Melon<Core>.Logger.Msg($"  Success probability: {probability}");
-                    Melon<Core>.Logger.Msg($"  Success: {success}");
-                    Melon<Core>.Logger.Msg($"  Range: low={low}, high={high}");
+                    if (printCalcToConsole)
+                    {
+                        Melon<Core>.Logger.Msg($"Binary Search Iteration {iterations}:");
+                        Melon<Core>.Logger.Msg($"  Testing price: {mid}");
+                        Melon<Core>.Logger.Msg($"  Success probability: {probability}");
+                        Melon<Core>.Logger.Msg($"  Success: {success}");
+                        Melon<Core>.Logger.Msg($"  Range: low={low}, high={high}");
+                    }
 
                     if (success)
                     {
@@ -118,9 +168,12 @@ namespace DealOptimizer_IL2CPP
                     iterations++;
                 }
 
-                Melon<Core>.Logger.Msg($"Binary Search Complete:");
-                Melon<Core>.Logger.Msg($"  Final bestFailingPrice: {bestFailingPrice}");
-                Melon<Core>.Logger.Msg($"  Final range: low={low}, high={high}");
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Binary Search Complete:");
+                    Melon<Core>.Logger.Msg($"  Final bestFailingPrice: {bestFailingPrice}");
+                    Melon<Core>.Logger.Msg($"  Final range: low={low}, high={high}");
+                }
 
                 return bestFailingPrice;
             }
@@ -147,9 +200,42 @@ namespace DealOptimizer_IL2CPP
 
         private static class DisplayHelper
         {
-            public static void UpdateCounterOfferDisplayText(string text, string reasonText)
+            public static void UpdateCounterOfferDisplayText(string text, string additionalText)
             {
-                counterOfferDisplayText = text + '\n' + reasonText;
+                counterOfferDisplayText = text + '\n' + additionalText;
+            }
+
+            public static string GenerateAdditionalText(OfferData offerData, Decimal maxSpend)
+            {
+                bool isPricePerUnitDisplayEnabled = GetConfigurationFlag(Flags.PricePerUnitDisplay);
+                bool isMaxDailySpendDisplayEnabled = GetConfigurationFlag(Flags.MaximumDailySpendDisplay);
+
+                if (!isPricePerUnitDisplayEnabled && !isMaxDailySpendDisplayEnabled)
+                {
+                    return "";
+                }
+
+                StringBuilder sb = new StringBuilder();
+
+                if (isPricePerUnitDisplayEnabled)
+                {
+                    if (sb.Length != 0)
+                    {
+                        sb.AppendLine();
+                    }
+                    sb.Append($"Price per unit: {offerData.Price / offerData.Quantity}");
+                }
+
+                if (isMaxDailySpendDisplayEnabled)
+                {
+                    if (sb.Length != 0)
+                    {
+                        sb.AppendLine();
+                    }
+                    sb.Append($"Max Spend: {maxSpend}");
+                }
+
+                return sb.ToString();
             }
         }
 
@@ -171,14 +257,14 @@ namespace DealOptimizer_IL2CPP
             }
         }
 
-        [HarmonyPatch(typeof(CounterOfferProductSelector), nameof(CounterOfferProductSelector.ProductSelected))]
-        static class CounterOfferProductSelectorPostfixProductSelected
-        {
-            static void Postfix(ProductDefinition def)
-            {
-                OptimizeCounterofferThenEvaluate();
-            }
-        }
+        //[HarmonyPatch(typeof(CounterOfferProductSelector), "ProductSelected")]
+        //static class CounterOfferProductSelectorPostfixProductSelected
+        //{
+        //    static void Postfix(ProductDefinition def)
+        //    {
+        //        OptimizeCounterofferThenEvaluate();
+        //    }
+        //}
 
         [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangePrice))]
         static class CounterofferInterfacePostfixChangePrice
@@ -226,10 +312,7 @@ namespace DealOptimizer_IL2CPP
 
             int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, price, maxSpend);
 
-            messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price);
-
-            OfferData offerData = GetCurrentOfferData();
-            EvaluateCounterOffer(offerData);
+            messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price); // Will trigger offer evaluation
         }
 
         private static void OptimizeCounterofferThenEvaluate()
@@ -256,10 +339,7 @@ namespace DealOptimizer_IL2CPP
                 maxSpend
                 );
 
-            counterofferInterface.ChangePrice(optimalPrice - (int)currentPrice);
-
-            OfferData offerData = GetCurrentOfferData();
-            EvaluateCounterOffer(offerData);
+            counterofferInterface.ChangePrice(optimalPrice - (int)currentPrice); // Will trigger offer evaluation
         }
 
         private static void EvaluateAfterPriceChange()
@@ -269,11 +349,6 @@ namespace DealOptimizer_IL2CPP
 
             OfferData offerData = GetCurrentOfferData();
             EvaluateCounterOffer(offerData);
-        }
-
-        private static bool DefinitelyLessThan(float a, float b)
-        {
-            return (b - a) > ((Math.Abs(a) < Math.Abs(b) ? Math.Abs(b) : Math.Abs(a)) * 1E-15);
         }
 
         private class OfferData
@@ -309,48 +384,53 @@ namespace DealOptimizer_IL2CPP
             return new OfferData(customer, product, quantity, price);
         }
 
-        private void OfferPriceChangeCheckWithLog()
-        {
-            OfferData offerData = GetCurrentOfferData();
-            StringBuilder stringBuilder = new StringBuilder();
-
-            stringBuilder.Append('\n');
-            stringBuilder.Append($"Customer Name: {offerData.Customer.name}\n");
-            stringBuilder.Append($"Product: {offerData.Product.ID}\n");
-            stringBuilder.Append($"Quantity: {offerData.Quantity}\n");
-            stringBuilder.Append($"Price: {offerData.Price}\n");
-
-            EvaluateCounterOffer(stringBuilder, offerData);
-            LoggerInstance.Msg(stringBuilder.ToString());
-        }
-
         private static bool EvaluateCounterOffer(OfferData offerData)
         {
-            var (maxSpend, dailyAverage) = DealCalculator.CalculateSpendingLimits(offerData.Customer);
+            bool printCalcToConsole = GetConfigurationFlag(Flags.PrintCalculationsToConsole);
+            if (printCalcToConsole)
+            {
+                Melon<Core>.Logger.Msg("========================= Evaluation Start =========================");
+                Melon<Core>.Logger.Msg($"Customer Name: {offerData.Customer.name}");
+                Melon<Core>.Logger.Msg($"Product: {offerData.Product.ID}");
+                Melon<Core>.Logger.Msg($"Quantity: {offerData.Quantity}");
+                Melon<Core>.Logger.Msg($"Price: {offerData.Price}");
+            }
+
+            var (maxSpend, dailyAverage) = DealCalculator.CalculateSpendingLimits(offerData.Customer, printCalcToConsole);
             decimal maxSpendDecimal = Math.Round((decimal)maxSpend, 2);
 
             if (offerData.Price >= maxSpend)
             {
+                if (printCalcToConsole)
+                {
+                    Melon<Core>.Logger.Msg($"Guaranteed Failure: Exceeded Max Spend ({maxSpendDecimal})");
+                    Melon<Core>.Logger.Msg("========================== Evaluation End ==========================");
+                }
                 DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", $"Exceeded Max Spend ({maxSpendDecimal})");
                 return false;
             }
 
-            float probability = DealCalculator.CalculateSuccessProbability(offerData.Customer, offerData.Product, offerData.Quantity, offerData.Price);
+            float probability = DealCalculator.CalculateSuccessProbability(offerData.Customer, offerData.Product, offerData.Quantity, offerData.Price, printCalcToConsole);
             decimal probabilityPercent = Math.Round((decimal)(probability * 100), 3);
+
+            if (printCalcToConsole)
+            {
+                Melon<Core>.Logger.Msg("========================== Evaluation End ==========================");
+            }
 
             if (probability >= 1f)
             {
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", $"Price per unit: {offerData.Price / offerData.Quantity}\nMax Spend: {maxSpendDecimal}");
+                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return true;
             }
             else if (probability <= 0f)
             {
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", $"Price per unit: {offerData.Price / offerData.Quantity}\nMax Spend: {maxSpendDecimal}");
+                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return false;
             }
             else
             {
-                DisplayHelper.UpdateCounterOfferDisplayText($"Probability of success: {probabilityPercent}%", $"Price per unit: {offerData.Price / offerData.Quantity}\nMax Spend: {maxSpendDecimal}");
+                DisplayHelper.UpdateCounterOfferDisplayText($"Probability of success: {probabilityPercent}%", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return UnityEngine.Random.Range(0f, 1f) < probability;
             }
         }
@@ -399,6 +479,11 @@ namespace DealOptimizer_IL2CPP
             }
         }
 
+        private static bool DefinitelyLessThan(float a, float b)
+        {
+            return (b - a) > ((Math.Abs(a) < Math.Abs(b) ? Math.Abs(b) : Math.Abs(a)) * 1E-15);
+        }
+
         [HarmonyPatch(typeof(HandoverScreen), nameof(HandoverScreen.Open))]
         static class HandoverScreenPostfixOpen
         {
@@ -424,6 +509,8 @@ namespace DealOptimizer_IL2CPP
             displayTextStyle.normal.textColor = Color.black;
             displayTextStyle.normal.background = Texture2D.whiteTexture;
             displayTextStyle.alignment = TextAnchor.MiddleCenter;
+
+            SetupConfiguration();
 
             LoggerInstance.Msg("Initialized Mod");
         }
@@ -473,9 +560,16 @@ namespace DealOptimizer_IL2CPP
 
         private UnityAction Subscribe()
         {
-            UnityAction<string> changeListener = (UnityAction<string>)((string unused) => OfferPriceChangeCheckWithLog());
+            UnityAction<string> changeListener = (UnityAction<string>)((string unused) =>
+            {
+                bool valid = IsEnvironmentValid();
+                if (!valid) return;
 
-            MessagesApp messagesAppInstance = PlayerSingleton<MessagesApp>.Instance;
+                OfferData offerData = GetCurrentOfferData();
+                EvaluateCounterOffer(offerData);
+            });
+
+                MessagesApp messagesAppInstance = PlayerSingleton<MessagesApp>.Instance;
             messagesAppInstance.CounterofferInterface.PriceInput.onValueChanged.AddListener(changeListener);
 
             LoggerInstance.Msg("Attached listener");
