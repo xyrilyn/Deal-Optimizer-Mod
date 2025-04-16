@@ -4,6 +4,7 @@ using ScheduleOne;
 using ScheduleOne.DevUtilities;
 using ScheduleOne.Economy;
 using ScheduleOne.ItemFramework;
+using ScheduleOne.Levelling;
 using ScheduleOne.Messaging;
 using ScheduleOne.NPCs;
 using ScheduleOne.Product;
@@ -106,17 +107,28 @@ namespace DealOptimizer_Mono
             public static (float maxSpend, float dailyAverage) CalculateSpendingLimits(Customer customer, bool printCalcToConsole = false)
             {
                 CustomerData customerData = customer.CustomerData;
-                float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(customer.NPC.RelationData.RelationDelta / 5f);
-                var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, customer.NPC.RelationData.RelationDelta / 5f);
+
+                float normalizedRelationship = customer.NPC.RelationData.RelationDelta / 5f;
+                float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(normalizedRelationship);
+                var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, normalizedRelationship);
                 float dailyAverage = adjustedWeeklySpend / orderDays.Count;
                 float maxSpend = dailyAverage * 3f;
 
                 if (printCalcToConsole)
                 {
-                    Melon<Core>.Logger.Msg($"Adjusted Weekly Spend : {adjustedWeeklySpend}");
-                    Melon<Core>.Logger.Msg($"Order Days Count      : {orderDays.Count}");
-                    Melon<Core>.Logger.Msg($"Daily Average         : {dailyAverage}");
-                    Melon<Core>.Logger.Msg($"Max Spend             : {maxSpend}");
+                    string[] days = new string[orderDays.Count];
+                    for (int i = 0; i < orderDays.Count; i++)
+                    {
+                        days[i] = orderDays[i].ToString();
+                    }
+
+                    Melon<Core>.Logger.Msg($"Weekly Spend (Base)    : {Mathf.Lerp(customerData.MinWeeklySpend, customerData.MaxWeeklySpend, normalizedRelationship)}");
+                    Melon<Core>.Logger.Msg($"Order Limit Multiplier : {LevelManager.GetOrderLimitMultiplier(NetworkSingleton<LevelManager>.Instance.GetFullRank())}");
+                    Melon<Core>.Logger.Msg($"Adjusted Weekly Spend  : {adjustedWeeklySpend}");
+                    Melon<Core>.Logger.Msg($"Order Days             : {String.Join(", ", days)}");
+                    Melon<Core>.Logger.Msg($"Order Days Count       : {orderDays.Count}");
+                    Melon<Core>.Logger.Msg($"Daily Average          : {dailyAverage}");
+                    Melon<Core>.Logger.Msg($"Max Spend              : {maxSpend}");
                 }
 
                 return (maxSpend, dailyAverage);
@@ -374,10 +386,19 @@ namespace DealOptimizer_Mono
 
             Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
 
-            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Field("selectedProduct").GetValue<ProductDefinition>();
-
             string quantityText = messagesApp.CounterofferInterface.ProductLabel.text;
             int quantity = int.Parse(quantityText.Split("x ")[0]);
+
+            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Field("selectedProduct").GetValue<ProductDefinition>();
+            if (product == null)
+            {
+                // Traverse.Create can fail (reason unknown), so we use this as a fallback
+                string productName = quantityText.Split("x ")[1];
+                product = ProductManager.DiscoveredProducts.Find((Predicate<ProductDefinition>)((product) =>
+                {
+                    return product.Name == productName;
+                }));
+            }
 
             string priceText = messagesApp.CounterofferInterface.PriceInput.text;
             float price = priceText == "" ? 0 : float.Parse(priceText);
