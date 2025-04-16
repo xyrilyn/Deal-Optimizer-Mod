@@ -4,6 +4,7 @@ using Il2CppScheduleOne;
 using Il2CppScheduleOne.DevUtilities;
 using Il2CppScheduleOne.Economy;
 using Il2CppScheduleOne.ItemFramework;
+using Il2CppScheduleOne.Levelling;
 using Il2CppScheduleOne.Messaging;
 using Il2CppScheduleOne.NPCs;
 using Il2CppScheduleOne.Product;
@@ -17,7 +18,7 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.2.0", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.2.1", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -106,17 +107,28 @@ namespace DealOptimizer_IL2CPP
             public static (float maxSpend, float dailyAverage) CalculateSpendingLimits(Customer customer, bool printCalcToConsole = false)
             {
                 CustomerData customerData = customer.CustomerData;
-                float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(customer.NPC.RelationData.RelationDelta / 5f);
-                var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, customer.NPC.RelationData.RelationDelta / 5f);
+
+                float normalizedRelationship = customer.NPC.RelationData.RelationDelta / 5f;
+                float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(normalizedRelationship);
+                var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, normalizedRelationship);
                 float dailyAverage = adjustedWeeklySpend / orderDays.Count;
                 float maxSpend = dailyAverage * 3f;
 
                 if (printCalcToConsole)
                 {
-                    Melon<Core>.Logger.Msg($"Adjusted Weekly Spend : {adjustedWeeklySpend}");
-                    Melon<Core>.Logger.Msg($"Order Days Count      : {orderDays.Count}");
-                    Melon<Core>.Logger.Msg($"Daily Average         : {dailyAverage}");
-                    Melon<Core>.Logger.Msg($"Max Spend             : {maxSpend}");
+                    string[] days = new string[orderDays.Count];
+                    for (int i = 0; i < orderDays.Count; i++)
+                    {
+                        days[i] = orderDays[i].ToString();
+                    }
+
+                    Melon<Core>.Logger.Msg($"Weekly Spend (Base)    : {Mathf.Lerp(customerData.MinWeeklySpend, customerData.MaxWeeklySpend, normalizedRelationship)}");
+                    Melon<Core>.Logger.Msg($"Order Limit Multiplier : {LevelManager.GetOrderLimitMultiplier(NetworkSingleton<LevelManager>.Instance.GetFullRank())}");
+                    Melon<Core>.Logger.Msg($"Adjusted Weekly Spend  : {adjustedWeeklySpend}");
+                    Melon<Core>.Logger.Msg($"Order Days             : {String.Join(", ", days)}");
+                    Melon<Core>.Logger.Msg($"Order Days Count       : {orderDays.Count}");
+                    Melon<Core>.Logger.Msg($"Daily Average          : {dailyAverage}");
+                    Melon<Core>.Logger.Msg($"Max Spend              : {maxSpend}");
                 }
 
                 return (maxSpend, dailyAverage);
@@ -373,10 +385,14 @@ namespace DealOptimizer_IL2CPP
 
             Customer customer = CustomerHelper.GetCustomerFromMessagesApp(messagesApp);
 
-            ProductDefinition product = Traverse.Create(messagesApp.CounterofferInterface).Property("selectedProduct").GetValue<ProductDefinition>();
-
             string quantityText = messagesApp.CounterofferInterface.ProductLabel.text;
             int quantity = int.Parse(quantityText.Split("x ")[0]);
+
+            string productName = quantityText.Split("x ")[1];
+            ProductDefinition product = ProductManager.DiscoveredProducts.Find((Il2CppSystem.Predicate<ProductDefinition>)((product) =>
+            {
+                return product.Name == productName;
+            }));
 
             string priceText = messagesApp.CounterofferInterface.PriceInput.text;
             float price = priceText == "" ? 0 : float.Parse(priceText);
@@ -431,50 +447,6 @@ namespace DealOptimizer_IL2CPP
             else
             {
                 DisplayHelper.UpdateCounterOfferDisplayText($"Probability of success: {probabilityPercent}%", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
-                return UnityEngine.Random.Range(0f, 1f) < probability;
-            }
-        }
-
-        private bool EvaluateCounterOffer(StringBuilder stringBuilder, OfferData offerData)
-        {
-            var (maxSpend, dailyAverage) = DealCalculator.CalculateSpendingLimits(offerData.Customer);
-            decimal maxSpendDecimal = Math.Round((decimal)maxSpend, 2);
-
-            stringBuilder.Append('\n');
-            stringBuilder.Append($"Adjusted Weekly Spend: {offerData.Customer.CustomerData.GetAdjustedWeeklySpend(offerData.Customer.NPC.RelationData.RelationDelta / 5f)}\n");
-            stringBuilder.Append($"Order Days: {offerData.Customer.CustomerData.GetOrderDays(offerData.Customer.CurrentAddiction, offerData.Customer.NPC.RelationData.RelationDelta / 5f).Count}\n");
-            stringBuilder.Append($"Average Daily Spend: {dailyAverage}\n");
-            stringBuilder.Append($"Daily Spend Threshold (3x Avg): {maxSpendDecimal}\n");
-
-            if (offerData.Price >= maxSpend)
-            {
-                stringBuilder.Append("\nGuaranteed Failure - order must be less than 3x average daily spend\n");
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", $"Exceeded Max Spend ({maxSpendDecimal})");
-                return false;
-            }
-
-            float probability = DealCalculator.CalculateSuccessProbability(offerData.Customer, offerData.Product, offerData.Quantity, offerData.Price);
-            decimal probabilityPercent = Math.Round((decimal)(probability * 100), 3);
-
-            stringBuilder.Append('\n');
-            stringBuilder.Append($"Success Probability: {probabilityPercent}%\n");
-
-            if (probability >= 1f)
-            {
-                stringBuilder.Append("\nGuaranteed Success - high probability of success\n");
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", "");
-                return true;
-            }
-            else if (probability <= 0f)
-            {
-                stringBuilder.Append("\nGuaranteed Failure - low probability of success\n");
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", "");
-                return false;
-            }
-            else
-            {
-                stringBuilder.Append($"\nProbability of success: {probabilityPercent}%\n");
-                DisplayHelper.UpdateCounterOfferDisplayText($"Probability of success: {probabilityPercent}%", "");
                 return UnityEngine.Random.Range(0f, 1f) < probability;
             }
         }
