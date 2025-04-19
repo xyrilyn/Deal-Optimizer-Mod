@@ -193,6 +193,11 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(ProductEntry entry)
             {
+                if (!ProductEvaluatorEnabled.Value)
+                {
+                    return;
+                }
+
                 if (entry == null)
                 {
                     selectedProductForEvaluation = null;
