@@ -464,6 +464,8 @@
 	<ItemGroup>
 		<Compile Include="Core.cs" />
 		<Compile Include="ModConfiguration.cs" />
+		<Compile Include="ProductManagement.cs" />
+		<Compile Include="UIUtils.cs" />
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
