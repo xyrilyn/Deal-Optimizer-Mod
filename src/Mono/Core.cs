@@ -271,6 +271,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductDefinition product, int quantity, float price, MSGConversation _conversation, Action<ProductDefinition, int, float> _orderConfirmedCallback)
             {
+                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                {
+                    return;
+                }
+
                 OptimizeInitialOfferThenEvaluate(product, quantity, price, _conversation);
             }
         }
@@ -280,6 +285,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(int change)
             {
+                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                {
+                    return;
+                }
+
                 OptimizeCounterofferThenEvaluate();
             }
         }
@@ -289,6 +299,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductDefinition def)
             {
+                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                {
+                    return;
+                }
+
                 OptimizeCounterofferThenEvaluate();
             }
         }
@@ -298,6 +313,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(float change)
             {
+                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                {
+                    return;
+                }
+
                 EvaluateAfterPriceChange();
             }
         }
@@ -487,6 +507,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(Contract contract, Customer customer, EMode mode, Action<EHandoverOutcome, List<ItemInstance>, float> callback, Func<List<ItemInstance>, float, float> successChanceMethod)
             {
+                if (!GetConfigurationFlag(Flags.StreetDealOptimizationEnabled))
+                {
+                    return;
+                }
+
                 var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
                 HandoverScreen handoverScreen = Singleton<HandoverScreen>.Instance;
 
@@ -536,21 +561,21 @@ namespace DealOptimizer_Mono
             bool homeScreenOpened = PlayerSingleton<HomeScreen>.Instance.isOpen;
             bool counterofferInterfaceOpened = PlayerSingleton<MessagesApp>.Instance != null && PlayerSingleton<MessagesApp>.Instance.CounterofferInterface.IsOpen;
 
-            if (!homeScreenOpened && counterofferInterfaceOpened)
+            if (GetConfigurationFlag(Flags.CounterofferOptimizationEnabled) && !homeScreenOpened && counterofferInterfaceOpened)
             {
                 GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterofferUIDisplayText, counterofferUIDisplayTextStyle);
             }
 
             bool productManagerAppOpened = ProductManagerApp.Instance.isOpen;
 
-            if (!homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
+            if (GetConfigurationFlag(Flags.ProductEvaluatorEnabled) && !homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
             {
                 InitializeProductManagerAppUI();
 
                 GUI.BeginGroup(productWindow);
                 Color originalColor = GUI.backgroundColor; // Store original
                 GUI.backgroundColor = new Color(0, 0, 0);
-                productWindow = ClampToScreen(GUI.Window(515, productWindow, DrawProductWindowContents, "Product Evaluation", productInfoWindowStyle));
+                productWindow = ClampToScreen(GUI.Window(515, productWindow, DrawProductWindowContents, "Product Evaluator (experimental)", productInfoWindowStyle));
                 GUI.backgroundColor = originalColor; // Reset original
                 GUI.EndGroup();
             }
