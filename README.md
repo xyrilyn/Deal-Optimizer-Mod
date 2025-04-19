@@ -1,33 +1,27 @@
 # Deal-Optimizer-Mod
 A MelonLoader mod that optimizes deals for the Steam game [Schedule I](https://store.steampowered.com/app/3164500/Schedule_I/)
 
-Features:
+> [!NOTE]
+> All features of this mod are for both versions of the game (`Mono` and `IL2CPP`) unless otherwise stated. (See [Installation](https://github.com/xyrilyn/Deal-Optimizer-Mod/edit/main/README.md#installation) for more information.)
+
+**Features:**
 * Evaluates the current offer and displays its probability of success in the Counteroffer UI
-* Displays the price per unit of the current offer in the Counteroffer UI (enabled by default; configurable)
-* Displays the maximum daily cash for the customer in the Counteroffer UI (enabled by default; configurable)
+* Displays the price per unit of the current offer in the Counteroffer UI
+* Displays the maximum daily cash for the customer in the Counteroffer UI
 * Attempts to set a price for the current quantity that has the highest probability of success during Counteroffers
-* Automatically sets the maximum daily cash the customer has during Offers (Street Deals)
-
-## Configuration
-> [!TIP]
-> When the mod is loaded in-game for the first time, a placeholder configuration file is created for you and can be found at `SteamLibrary\steamapps\common\Schedule I\Mods\DealOptimizer\DealOptimizer_Config.json`
-
-* This configuration file works for both versions of this mod
-* To enable a flag, change its value to "true"; to disable a flag, change its value to "false"
-
-| Flags | Description | Default |
-| - | - | - |
-| PrintCalculationsToConsole | Print calculation steps to the MelonLoader console | Disabled |
-| PricePerUnitDisplay | Display the price per unit in the Counteroffer UI | Enabled |
-| MaximumDailySpendDisplay | Display the customer's maximum daily spend in the Counteroffer UI | Enabled |
+* Automatically sets the maximum daily cash the customer has during Offers
+* Adds a Product Evaluator window to the Product Manager App in your phone to check whether customers will buy your product (from yourself or their dealers) and for how much
+* `[IL2CPP-only]` Supports mod configuration via the [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) with live updates
 
 ## Installation
 > [!NOTE]
-> You can select your game version via Steam > Schedule I > Properties > Betas > Beta Participation. By default, it will be `none` (normal version of the game).
+> Schedule I has two versions: `Mono` and `IL2CPP`. You should pick the mod version based on the game version you are playing.
 > 
-> For `none` or `beta`, use the `IL2CPP` version. For `alternate` or `alternate-beta`, use the `Mono` version.
->
-> Generally, `Mono` plays nicer with mods, but is less performant compared to `IL2CPP`.
+> You can select your game version via Steam > Schedule I > Properties > Betas > Beta Participation. By default, it will be `none` (which is `IL2CPP`, the normal version of the game which most players will play on).
+> 
+> If you are playing using `none` or `beta`, use the `IL2CPP` version of this mod.
+> 
+> If you are playing using `alternate` or `alternate-beta`, use the `Mono` version of this mod.
 
 1. Install [MelonLoader](https://github.com/LavaGang/MelonLoader) for the game.
 2. After installing MelonLoader for the game, run the game once for MelonLoader to setup. Exit the game.
@@ -35,11 +29,33 @@ Features:
 4. Run the game. The mod is enabled automatically and requires no further setup.
 5. To update the mod, follow step 3 again. To remove the mod, delete it and its configuration file from your Mods folder.
 
+## Configuration
+> [!TIP]
+> `[Mono-only]` When the mod is loaded in-game for the first time, a placeholder configuration file is created for you and can be found at `SteamLibrary\steamapps\common\Schedule I\Mods\DealOptimizer\DealOptimizer_Config.json`
+> 
+> `[IL2CPP-only]` Mod configuration is stored in the Melon Preferences found at `SteamLibrary\steamapps\common\Schedule I\UserData\MelonPreferences.cfg`
+
+* The configuration options below work for both versions of this mod - however, they are configured in different ways
+* For Mono: Exit the game. Manually edit `DealOptimizer_Config.json` in any text editor. Save the file and then run the game.
+* For IL2CPP:
+    * Method One: Exit the game. Manually edit `MelonPreferences.cfg` in any text editor. Save the file and then run the game.
+    * Method Two: Install [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) and use it to configure this mod.
+* If editing files manually: to enable a flag, change its value to "true"; to disable a flag, change its value to "false"
+
+| Flags | Description | Default |
+| - | - | - |
+| CounterofferOptimizationEnabled | Enable optimization for Counteroffers | Enabled |
+| PricePerUnitDisplay | Display the price per unit in the Counteroffer UI | Enabled |
+| MaximumDailySpendDisplay | Display the customer's maximum daily spend in the Counteroffer UI | Enabled |
+| StreetDealOptimizationEnabled | Enable optimization for Street Deals | Enabled |
+| ProductEvaluatorEnabled | Enable Product Evaluator feature | Enabled |
+| PrintCalculationsToConsole | Print calculation steps to the MelonLoader console | Disabled |
+
 ## Building
 
 1. The mod exists in two versions. Select the project folder based on the version of the game you are intending to run:
-    - Default: IL2CPP (.NET 6.0)
-    - Alternate: Mono (.NET Framework 3.5)
+    - Default: `IL2CPP` (.NET 6.0)
+    - Alternate: `Mono` (.NET Framework 3.5)
 2. You will likely need to update the references in the `.csproj` to point to wherever your game is installed on your machine. Remember to update the post build path as well.
     - You can either do this manually or by using the Visual Studio 2022 Template provided in the [MelonLoader quickstart](https://melonwiki.xyz/#/modders/quickstart?id=visual-studio-template).
 3. Run `dotnet build` in the project folder. The `.dll` will be copied over to the `\Mods` folder in the game files directly.
