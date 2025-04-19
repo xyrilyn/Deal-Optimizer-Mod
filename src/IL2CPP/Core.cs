@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using HarmonyLib;
 using Il2CppScheduleOne;
 using Il2CppScheduleOne.DevUtilities;
 using Il2CppScheduleOne.Economy;
@@ -13,12 +12,15 @@ using Il2CppScheduleOne.UI.Handover;
 using Il2CppScheduleOne.UI.Phone;
 using Il2CppScheduleOne.UI.Phone.Messages;
 using MelonLoader;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
+using Il2CppScheduleOne.UI.Phone.ProductManagerApp;
+using static DealOptimizer_IL2CPP.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.2.1", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.0", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -27,21 +29,34 @@ namespace DealOptimizer_IL2CPP
     {
         private bool listening = false;
 
-        private GUIStyle displayTextStyle;
-        private static string counterOfferDisplayText = "";
+        private GUIStyle counterofferUIDisplayTextStyle;
+        private static string counterofferUIDisplayText = "";
 
         private static class DealCalculator
         {
-            public static float CalculateSuccessProbability(Customer customer, ProductDefinition product, int quantity, float price, bool printCalcToConsole = false)
+            public static float CalculateSuccessProbability(OfferData customerOfferData, OfferData playerOfferData, bool printCalcToConsole = false)
+            {
+                return CalculateSuccessProbability(
+                    customerOfferData.Customer,
+                    customerOfferData.Product,
+                    customerOfferData.Quantity,
+                    customerOfferData.Price,
+                    playerOfferData.Product,
+                    playerOfferData.Quantity,
+                    playerOfferData.Price,
+                    printCalcToConsole
+                    );
+            }
+
+            public static float CalculateSuccessProbability(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, bool printCalcToConsole = false)
             {
                 CustomerData customerData = customer.CustomerData;
 
-                float valueProposition = Customer.GetValueProposition(Registry.GetItem<ProductDefinition>(customer.OfferedContractInfo.Products.entries[0].ProductID),
-                    customer.OfferedContractInfo.Payment / (float)customer.OfferedContractInfo.Products.entries[0].Quantity);
-                float productEnjoyment = customer.GetProductEnjoyment(product, customerData.Standards.GetCorrespondingQuality());
+                float valueProposition = Customer.GetValueProposition(customerProduct, customerPrice / customerQuantity);
+                float productEnjoyment = customer.GetProductEnjoyment(playerProduct, customerData.Standards.GetCorrespondingQuality());
                 float enjoymentNormalized = Mathf.InverseLerp(-1f, 1f, productEnjoyment);
-                float newValueProposition = Customer.GetValueProposition(product, price / (float)quantity);
-                float quantityRatio = Mathf.Pow((float)quantity / (float)customer.OfferedContractInfo.Products.entries[0].Quantity, 0.6f);
+                float newValueProposition = Customer.GetValueProposition(playerProduct, playerPrice / playerQuantity);
+                float quantityRatio = Mathf.Pow(playerQuantity / customerQuantity, 0.6f);
                 float quantityMultiplier = Mathf.Lerp(0f, 2f, quantityRatio * 0.5f);
                 float penaltyMultiplier = Mathf.Lerp(1f, 0f, Mathf.Abs(quantityMultiplier - 1f));
 
@@ -134,24 +149,24 @@ namespace DealOptimizer_IL2CPP
                 return (maxSpend, dailyAverage);
             }
 
-            public static int FindOptimalPrice(Customer customer, ProductDefinition product, int quantity, float currentPrice, float maxSpend, float minSuccessProbability = 0.98f)
+            public static int FindOptimalPrice(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, float maxSpend, float minSuccessProbability = 0.98f)
             {
-                int low = (int)currentPrice;
+                int low = (int)playerPrice;
                 int high = (int)maxSpend;
-                int bestFailingPrice = (int)currentPrice;
+                int bestFailingPrice = (int)playerPrice;
                 int maxIterations = 30;
                 int iterations = 0;
 
                 bool printCalcToConsole = GetConfigurationFlag(Flags.PrintCalculationsToConsole);
                 if (printCalcToConsole)
                 {
-                    Melon<Core>.Logger.Msg($"Binary Search Start - Price: {currentPrice}, MaxSpend: {maxSpend}, Quantity: {quantity}, MinProbability: {minSuccessProbability}");
+                    Melon<Core>.Logger.Msg($"Binary Search Start - Price: {playerPrice}, MaxSpend: {maxSpend}, Quantity: {playerQuantity}, MinProbability: {minSuccessProbability}");
                 }
 
                 while (iterations < maxIterations && low < high)
                 {
                     int mid = (low + high) / 2;
-                    float probability = CalculateSuccessProbability(customer, product, quantity, mid);
+                    float probability = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid);
                     bool success = probability >= minSuccessProbability;
 
                     if (printCalcToConsole)
@@ -168,7 +183,7 @@ namespace DealOptimizer_IL2CPP
                         low = mid + 1;
                         if (low == high)
                         {
-                            bestFailingPrice = CalculateSuccessProbability(customer, product, quantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
+                            bestFailingPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
                             break;
                         }
                     }
@@ -212,9 +227,9 @@ namespace DealOptimizer_IL2CPP
 
         private static class DisplayHelper
         {
-            public static void UpdateCounterOfferDisplayText(string text, string additionalText)
+            public static void UpdateCounterOfferUIDisplayText(string text, string additionalText)
             {
-                counterOfferDisplayText = text + '\n' + additionalText;
+                counterofferUIDisplayText = text + '\n' + additionalText;
             }
 
             public static string GenerateAdditionalText(OfferData offerData, Decimal maxSpend)
@@ -318,11 +333,14 @@ namespace DealOptimizer_IL2CPP
             Customer customer = CustomerHelper.GetCustomerFromConversation(_conversation);
             var (maxSpend, _) = DealCalculator.CalculateSpendingLimits(customer);
 
-            CounterofferInterface counterofferInterface = messagesApp.CounterofferInterface;
-            string priceText = counterofferInterface.PriceInput.text;
-            float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
+            OfferData customerContractData = GetCustomerContractData(customer);
 
-            int optimalPrice = DealCalculator.FindOptimalPrice(customer, product, quantity, price, maxSpend);
+            int optimalPrice = DealCalculator.FindOptimalPrice(
+                customer,
+                customerContractData.Product, customerContractData.Quantity, customerContractData.Price,
+                product, quantity, price,
+                maxSpend
+                );
 
             messagesApp.CounterofferInterface.ChangePrice(optimalPrice - (int)price); // Will trigger offer evaluation
         }
@@ -341,13 +359,13 @@ namespace DealOptimizer_IL2CPP
             string priceText = counterofferInterface.PriceInput.text;
             float currentPrice = priceText == "" ? 0 : float.Parse(priceText);
 
-            OfferData currentOfferData = GetCurrentOfferData();
+            OfferData customerContractData = GetCustomerContractData(customer);
+            OfferData currentOfferData = GetPlayerOfferData();
 
             int optimalPrice = DealCalculator.FindOptimalPrice(
                 customer,
-                currentOfferData.Product,
-                currentOfferData.Quantity,
-                currentOfferData.Product.MarketValue * currentOfferData.Quantity * 0.5f,
+                customerContractData.Product, customerContractData.Quantity, customerContractData.Price,
+                currentOfferData.Product, currentOfferData.Quantity, currentOfferData.Product.MarketValue * currentOfferData.Quantity * 0.5f,
                 maxSpend
                 );
 
@@ -359,27 +377,28 @@ namespace DealOptimizer_IL2CPP
             bool valid = IsEnvironmentValid();
             if (!valid) return;
 
-            OfferData offerData = GetCurrentOfferData();
+            OfferData offerData = GetPlayerOfferData();
             EvaluateCounterOffer(offerData);
         }
 
-        private class OfferData
+        private class OfferData(Customer customer, ProductDefinition product, int quantity, float price)
         {
-            public Customer Customer { get; }
-            public ProductDefinition Product { get; }
-            public int Quantity { get; }
-            public float Price { get; }
-
-            public OfferData(Customer customer, ProductDefinition product, int quantity, float price)
-            {
-                Customer = customer;
-                Product = product;
-                Quantity = quantity;
-                Price = price;
-            }
+            public Customer Customer { get; } = customer;
+            public ProductDefinition Product { get; } = product;
+            public int Quantity { get; } = quantity;
+            public float Price { get; } = price;
         }
 
-        private static OfferData GetCurrentOfferData()
+        private static OfferData GetCustomerContractData(Customer customer)
+        {
+            ProductDefinition product = Registry.GetItem<ProductDefinition>(customer.OfferedContractInfo.Products.entries[0].ProductID);
+            int quantity = customer.OfferedContractInfo.Products.entries[0].Quantity;
+            float price = customer.OfferedContractInfo.Payment / (float)quantity;
+
+            return new OfferData(customer, product, quantity, price);
+        }
+
+        private static OfferData GetPlayerOfferData()
         {
             MessagesApp messagesApp = PlayerSingleton<MessagesApp>.Instance;
 
@@ -422,11 +441,12 @@ namespace DealOptimizer_IL2CPP
                     Melon<Core>.Logger.Msg($"Guaranteed Failure: Exceeded Max Spend ({maxSpendDecimal})");
                     Melon<Core>.Logger.Msg("========================== Evaluation End ==========================");
                 }
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", $"Exceeded Max Spend ({maxSpendDecimal})");
+                DisplayHelper.UpdateCounterOfferUIDisplayText("Guaranteed Failure", $"Exceeded Max Spend ({maxSpendDecimal})");
                 return false;
             }
 
-            float probability = DealCalculator.CalculateSuccessProbability(offerData.Customer, offerData.Product, offerData.Quantity, offerData.Price, printCalcToConsole);
+            OfferData customerContractData = GetCustomerContractData(offerData.Customer);
+            float probability = DealCalculator.CalculateSuccessProbability(customerContractData, offerData, printCalcToConsole);
             decimal probabilityPercent = Math.Round((decimal)(probability * 100), 3);
 
             if (printCalcToConsole)
@@ -436,17 +456,17 @@ namespace DealOptimizer_IL2CPP
 
             if (probability >= 1f)
             {
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Success", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
+                DisplayHelper.UpdateCounterOfferUIDisplayText("Guaranteed Success", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return true;
             }
             else if (probability <= 0f)
             {
-                DisplayHelper.UpdateCounterOfferDisplayText("Guaranteed Failure", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
+                DisplayHelper.UpdateCounterOfferUIDisplayText("Guaranteed Failure", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return false;
             }
             else
             {
-                DisplayHelper.UpdateCounterOfferDisplayText($"Probability of success: {probabilityPercent}%", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
+                DisplayHelper.UpdateCounterOfferUIDisplayText($"Probability of success: {probabilityPercent}%", DisplayHelper.GenerateAdditionalText(offerData, maxSpendDecimal));
                 return UnityEngine.Random.Range(0f, 1f) < probability;
             }
         }
@@ -476,17 +496,22 @@ namespace DealOptimizer_IL2CPP
 
         public override void OnInitializeMelon()
         {
-            displayTextStyle = new GUIStyle("label");
-            displayTextStyle.fontSize = 18;
-            displayTextStyle.normal.textColor = Color.black;
-            displayTextStyle.normal.background = Texture2D.whiteTexture;
-            displayTextStyle.alignment = TextAnchor.MiddleCenter;
+            InitializeCounterofferUI();
 
             SetupConfiguration();
 
             LoggerInstance.Msg("Initialized Mod");
         }
-        
+
+        private void InitializeCounterofferUI()
+        {
+            counterofferUIDisplayTextStyle = new GUIStyle("label");
+            counterofferUIDisplayTextStyle.fontSize = 18;
+            counterofferUIDisplayTextStyle.normal.textColor = Color.black;
+            counterofferUIDisplayTextStyle.normal.background = Texture2D.whiteTexture;
+            counterofferUIDisplayTextStyle.alignment = TextAnchor.MiddleCenter;
+        }
+
         public override void OnGUI()
         {
             bool gameStarted = SceneManager.GetActiveScene() != null && SceneManager.GetActiveScene().name == "Main";
@@ -507,7 +532,21 @@ namespace DealOptimizer_IL2CPP
 
             if (!homeScreenOpened && counterofferInterfaceOpened)
             {
-                GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterOfferDisplayText, displayTextStyle);
+                GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterofferUIDisplayText, counterofferUIDisplayTextStyle);
+            }
+
+            bool productManagerAppOpened = ProductManagerApp.Instance.isOpen;
+
+            if (!homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
+            {
+                InitializeProductManagerAppUI();
+
+                GUI.BeginGroup(productWindow);
+                Color originalColor = GUI.backgroundColor; // Store original
+                GUI.backgroundColor = new Color(0, 0, 0);
+                productWindow = ClampToScreen(GUI.Window(515, productWindow, (GUI.WindowFunction)DrawProductWindowContents, "Product Evaluation", productInfoWindowStyle));
+                GUI.backgroundColor = originalColor; // Reset original
+                GUI.EndGroup();
             }
         }
 
@@ -537,7 +576,7 @@ namespace DealOptimizer_IL2CPP
                 bool valid = IsEnvironmentValid();
                 if (!valid) return;
 
-                OfferData offerData = GetCurrentOfferData();
+                OfferData offerData = GetPlayerOfferData();
                 EvaluateCounterOffer(offerData);
             });
 
