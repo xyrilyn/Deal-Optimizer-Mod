@@ -1,82 +1,54 @@
-﻿
-using System.Text.Json;
-using MelonLoader;
+﻿using MelonLoader;
+using ModManagerPhoneApp;
 
 namespace DealOptimizer_IL2CPP
 {
     public partial class Core
     {
-        private static ModConfiguration modConfiguration;
+        // 01_Counteroffer
+        public static MelonPreferences_Entry<bool> CounterofferOptimizationEnabled;
+        public static MelonPreferences_Entry<bool> PricePerUnitDisplay;
+        public static MelonPreferences_Entry<bool> MaximumDailySpendDisplay;
 
-        [Serializable]
-        private class ModConfiguration
-        {
-            public Dictionary<string, string> Flags { get; set; }
+        // 02_Street Deals
+        public static MelonPreferences_Entry<bool> StreetDealOptimizationEnabled;
 
-            public ModConfiguration()
-            {
-                Flags = new Dictionary<string, string>();
-            }
+        // 03_Product_Evaluator
+        public static MelonPreferences_Entry<bool> ProductEvaluatorEnabled;
 
-            public ModConfiguration(Dictionary<string, string> flags)
-            {
-                Flags = flags;
-            }
-        }
-
-        public static class Flags
-        {
-            public static readonly string PrintCalculationsToConsole = "PrintCalculationsToConsole";
-
-            public static readonly string PricePerUnitDisplay = "PricePerUnitDisplay";
-            public static readonly string MaximumDailySpendDisplay = "MaximumDailySpendDisplay";
-        }
-
-        private static readonly ModConfiguration defaultModConfiguration = new ModConfiguration(
-            new Dictionary<string, string>
-            {
-                [Flags.PrintCalculationsToConsole] = "false",
-                [Flags.PricePerUnitDisplay] = "true",
-                [Flags.MaximumDailySpendDisplay] = "true",
-            }
-        );
+        // 09_Debug
+        public static MelonPreferences_Entry<bool> PrintCalculationsToConsole;
 
         private void SetupConfiguration()
         {
-            string assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string modDirectory = Path.GetDirectoryName(assemblyLocation);
-            string configPath = Path.Combine(modDirectory, "DealOptimizer", "DealOptimizer_Config.json");
-
-            LoggerInstance.Msg($"Config Path: {configPath}");
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath));
-
-            if (!File.Exists(configPath))
+            try
             {
-                modConfiguration = defaultModConfiguration;
-
-                var options = new JsonSerializerOptions { WriteIndented = true, PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
-                string jsonString = JsonSerializer.Serialize(modConfiguration, options);
-                File.WriteAllText(configPath, jsonString);
+                ModManagerPhoneApp.ModSettingsEvents.OnPreferencesSaved += HandleSettingsUpdate;
+                LoggerInstance.Msg("Successfully subscribed to Mod Manager save event.");
             }
-            else
+            catch (Exception ex) // Catches TypeLoadException if DLL missing, or other errors
             {
-                try
-                {
-                    string jsonString = File.ReadAllText(configPath);
-                    var options = new JsonSerializerOptions { WriteIndented = true, PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
-                    modConfiguration = JsonSerializer.Deserialize<ModConfiguration>(jsonString, options);
-                }
-                catch (Exception ex)
-                {
-                    LoggerInstance.Error($"Invalid mod configuration (will use defaults as fallback)", ex);
-                    modConfiguration = defaultModConfiguration;
-                }
+                LoggerInstance.Warning($"Could not subscribe to Mod Manager event (Mod Manager may not be installed/compatible): {ex.Message}");
             }
+
+            var categoryCounteroffer = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_01_Counteroffer", "Counteroffer Settings");
+            CounterofferOptimizationEnabled = categoryCounteroffer.CreateEntry("CounterofferOptimizationEnabled", true, "Enable optimization for Counteroffers");
+            PricePerUnitDisplay = categoryCounteroffer.CreateEntry("PricePerUnitDisplay", true, "Display price per unit in UI");
+            MaximumDailySpendDisplay = categoryCounteroffer.CreateEntry("MaximumDailySpendDisplay", true, "Display customer's max daily spend in UI");
+
+            var categoryStreetDeals = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_02_Street_Deals", "Street Deals Settings");
+            StreetDealOptimizationEnabled = categoryStreetDeals.CreateEntry("StreetDealOptimizationEnabled", true, "Enable optimization for Street Deals");
+
+            var categoryProductEvaluator = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_03_Product_Evaluator", "Product Evaluator Settings");
+            ProductEvaluatorEnabled = categoryProductEvaluator.CreateEntry("ProductEvaluatorEnabled", true, "Enable Product Evaluator feature");
+
+            var categoryDebug = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_09_Debug", "Debug Settings (May Cause Lag)");
+            PrintCalculationsToConsole = categoryDebug.CreateEntry("PrintCalculationsToConsole", false, "Print all calculation steps");
         }
 
-        private static bool GetConfigurationFlag(string name)
+        private void HandleSettingsUpdate()
         {
-            return bool.Parse(modConfiguration.Flags.GetValueOrDefault(name, defaultModConfiguration.Flags[name]));
+            LoggerInstance.Msg("Melon preferences updated");
         }
     }
 }
