@@ -177,6 +177,11 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductEntry entry)
             {
+                if (!GetConfigurationFlag(Flags.ProductEvaluatorEnabled))
+                {
+                    return;
+                }
+
                 if (entry == null)
                 {
                     selectedProductForEvaluation = null;

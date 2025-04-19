@@ -24,18 +24,29 @@ namespace DealOptimizer_Mono
 
         public static class Flags
         {
-            public static readonly string PrintCalculationsToConsole = "PrintCalculationsToConsole";
-
+            public static readonly string CounterofferOptimizationEnabled = "CounterofferOptimizationEnabled";
             public static readonly string PricePerUnitDisplay = "PricePerUnitDisplay";
             public static readonly string MaximumDailySpendDisplay = "MaximumDailySpendDisplay";
+
+            public static readonly string StreetDealOptimizationEnabled = "StreetDealOptimizationEnabled";
+
+            public static readonly string ProductEvaluatorEnabled = "ProductEvaluatorEnabled";
+
+            public static readonly string PrintCalculationsToConsole = "PrintCalculationsToConsole";
         }
 
         private static readonly ModConfiguration defaultModConfiguration = new ModConfiguration(
             new Dictionary<string, string>
             {
-                [Flags.PrintCalculationsToConsole] = "false",
+                [Flags.CounterofferOptimizationEnabled] = "true",
                 [Flags.PricePerUnitDisplay] = "true",
                 [Flags.MaximumDailySpendDisplay] = "true",
+
+                [Flags.StreetDealOptimizationEnabled] = "true",
+
+                [Flags.ProductEvaluatorEnabled] = "true",
+
+                [Flags.PrintCalculationsToConsole] = "false",
             }
         );
 
