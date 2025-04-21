@@ -20,7 +20,7 @@ using static ScheduleOne.UI.Handover.HandoverScreen;
 using ScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_Mono.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.1", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.2", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono
@@ -415,7 +415,7 @@ namespace DealOptimizer_Mono
         {
             ProductDefinition product = Registry.GetItem<ProductDefinition>(customer.OfferedContractInfo.Products.entries[0].ProductID);
             int quantity = customer.OfferedContractInfo.Products.entries[0].Quantity;
-            float price = customer.OfferedContractInfo.Payment / (float)quantity;
+            float price = customer.OfferedContractInfo.Payment;
 
             return new OfferData(customer, product, quantity, price);
         }
