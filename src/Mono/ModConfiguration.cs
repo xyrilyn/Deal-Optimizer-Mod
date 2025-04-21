@@ -9,24 +9,27 @@ namespace DealOptimizer_Mono
 
         private class ModConfiguration
         {
-            public Dictionary<string, string> Flags { get; }
+            public Dictionary<string, string> Options { get; }
 
             public ModConfiguration()
             {
-                Flags = new Dictionary<string, string>();
+                Options = new Dictionary<string, string>();
             }
 
-            public ModConfiguration(Dictionary<string, string> flags)
+            public ModConfiguration(Dictionary<string, string> options)
             {
-                Flags = flags;
+                Options = options;
             }
         }
 
-        public static class Flags
+        public static class Options
         {
-            public static readonly string CounterofferOptimizationEnabled = "CounterofferOptimizationEnabled";
+            public static readonly string CounterofferUIEnabled = "CounterofferUIEnabled";
             public static readonly string PricePerUnitDisplay = "PricePerUnitDisplay";
             public static readonly string MaximumDailySpendDisplay = "MaximumDailySpendDisplay";
+
+            public static readonly string CounterofferOptimizationEnabled = "CounterofferOptimizationEnabled";
+            public static readonly string MinimumSuccessProbability = "MinimumSuccessProbability";
 
             public static readonly string StreetDealOptimizationEnabled = "StreetDealOptimizationEnabled";
 
@@ -38,15 +41,18 @@ namespace DealOptimizer_Mono
         private static readonly ModConfiguration defaultModConfiguration = new ModConfiguration(
             new Dictionary<string, string>
             {
-                [Flags.CounterofferOptimizationEnabled] = "true",
-                [Flags.PricePerUnitDisplay] = "true",
-                [Flags.MaximumDailySpendDisplay] = "true",
+                [Options.CounterofferUIEnabled] = "true",
+                [Options.PricePerUnitDisplay] = "true",
+                [Options.MaximumDailySpendDisplay] = "true",
 
-                [Flags.StreetDealOptimizationEnabled] = "true",
+                [Options.CounterofferOptimizationEnabled] = "true",
+                [Options.MinimumSuccessProbability] = "98",
 
-                [Flags.ProductEvaluatorEnabled] = "true",
+                [Options.StreetDealOptimizationEnabled] = "true",
 
-                [Flags.PrintCalculationsToConsole] = "false",
+                [Options.ProductEvaluatorEnabled] = "false",
+
+                [Options.PrintCalculationsToConsole] = "false",
             }
         );
 
@@ -89,7 +95,12 @@ namespace DealOptimizer_Mono
 
         private static bool GetConfigurationFlag(string name)
         {
-            return bool.Parse(modConfiguration.Flags.GetValueOrDefault(name, defaultModConfiguration.Flags[name]));
+            return bool.Parse(modConfiguration.Options.GetValueOrDefault(name, defaultModConfiguration.Options[name]));
+        }
+
+        private static int GetConfigurationInt(string name)
+        {
+            return int.Parse(modConfiguration.Options.GetValueOrDefault(name, defaultModConfiguration.Options[name]));
         }
     }
 }

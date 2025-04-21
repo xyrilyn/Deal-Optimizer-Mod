@@ -20,7 +20,7 @@ using static ScheduleOne.UI.Handover.HandoverScreen;
 using ScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_Mono.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.0", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.1", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono
@@ -149,15 +149,16 @@ namespace DealOptimizer_Mono
                 return (maxSpend, dailyAverage);
             }
 
-            public static int FindOptimalPrice(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, float maxSpend, float minSuccessProbability = 0.98f)
+            public static int FindOptimalPrice(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, float maxSpend)
             {
                 int low = (int)playerPrice;
                 int high = (int)maxSpend;
-                int bestFailingPrice = (int)playerPrice;
+                int bestPrice = (int)playerPrice;
                 int maxIterations = 30;
                 int iterations = 0;
+                float minSuccessProbability = GetConfigurationInt(Options.MinimumSuccessProbability) / 100f;
 
-                bool printCalcToConsole = GetConfigurationFlag(Flags.PrintCalculationsToConsole);
+                bool printCalcToConsole = GetConfigurationFlag(Options.PrintCalculationsToConsole);
                 if (printCalcToConsole)
                 {
                     Melon<Core>.Logger.Msg($"Binary Search Start - Price: {playerPrice}, MaxSpend: {maxSpend}, Quantity: {playerQuantity}, MinProbability: {minSuccessProbability}");
@@ -183,13 +184,13 @@ namespace DealOptimizer_Mono
                         low = mid + 1;
                         if (low == high)
                         {
-                            bestFailingPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
+                            bestPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
                             break;
                         }
                     }
                     else
                     {
-                        bestFailingPrice = mid;
+                        bestPrice = mid;
                         high = mid;
                     }
                     iterations++;
@@ -198,11 +199,11 @@ namespace DealOptimizer_Mono
                 if (printCalcToConsole)
                 {
                     Melon<Core>.Logger.Msg($"Binary Search Complete:");
-                    Melon<Core>.Logger.Msg($"  Final bestFailingPrice: {bestFailingPrice}");
+                    Melon<Core>.Logger.Msg($"  Final bestPrice: {bestPrice}");
                     Melon<Core>.Logger.Msg($"  Final range: low={low}, high={high}");
                 }
 
-                return bestFailingPrice;
+                return bestPrice;
             }
         }
 
@@ -234,8 +235,8 @@ namespace DealOptimizer_Mono
 
             public static string GenerateAdditionalText(OfferData offerData, Decimal maxSpend)
             {
-                bool isPricePerUnitDisplayEnabled = GetConfigurationFlag(Flags.PricePerUnitDisplay);
-                bool isMaxDailySpendDisplayEnabled = GetConfigurationFlag(Flags.MaximumDailySpendDisplay);
+                bool isPricePerUnitDisplayEnabled = GetConfigurationFlag(Options.PricePerUnitDisplay);
+                bool isMaxDailySpendDisplayEnabled = GetConfigurationFlag(Options.MaximumDailySpendDisplay);
 
                 if (!isPricePerUnitDisplayEnabled && !isMaxDailySpendDisplayEnabled)
                 {
@@ -271,7 +272,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductDefinition product, int quantity, float price, MSGConversation _conversation, Action<ProductDefinition, int, float> _orderConfirmedCallback)
             {
-                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                if (!GetConfigurationFlag(Options.CounterofferOptimizationEnabled))
                 {
                     return;
                 }
@@ -285,7 +286,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(int change)
             {
-                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                if (!GetConfigurationFlag(Options.CounterofferOptimizationEnabled))
                 {
                     return;
                 }
@@ -299,7 +300,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductDefinition def)
             {
-                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                if (!GetConfigurationFlag(Options.CounterofferOptimizationEnabled))
                 {
                     return;
                 }
@@ -313,7 +314,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(float change)
             {
-                if (!GetConfigurationFlag(Flags.CounterofferOptimizationEnabled))
+                if (!GetConfigurationFlag(Options.CounterofferOptimizationEnabled))
                 {
                     return;
                 }
@@ -447,7 +448,7 @@ namespace DealOptimizer_Mono
 
         private static bool EvaluateCounterOffer(OfferData offerData)
         {
-            bool printCalcToConsole = GetConfigurationFlag(Flags.PrintCalculationsToConsole);
+            bool printCalcToConsole = GetConfigurationFlag(Options.PrintCalculationsToConsole);
             if (printCalcToConsole)
             {
                 Melon<Core>.Logger.Msg("========================= Evaluation Start =========================");
@@ -507,7 +508,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(Contract contract, Customer customer, EMode mode, Action<EHandoverOutcome, List<ItemInstance>, float> callback, Func<List<ItemInstance>, float, float> successChanceMethod)
             {
-                if (!GetConfigurationFlag(Flags.StreetDealOptimizationEnabled))
+                if (!GetConfigurationFlag(Options.StreetDealOptimizationEnabled))
                 {
                     return;
                 }
@@ -561,14 +562,14 @@ namespace DealOptimizer_Mono
             bool homeScreenOpened = PlayerSingleton<HomeScreen>.Instance.isOpen;
             bool counterofferInterfaceOpened = PlayerSingleton<MessagesApp>.Instance != null && PlayerSingleton<MessagesApp>.Instance.CounterofferInterface.IsOpen;
 
-            if (GetConfigurationFlag(Flags.CounterofferOptimizationEnabled) && !homeScreenOpened && counterofferInterfaceOpened)
+            if (GetConfigurationFlag(Options.CounterofferOptimizationEnabled) && GetConfigurationFlag(Options.CounterofferUIEnabled) && !homeScreenOpened && counterofferInterfaceOpened)
             {
                 GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterofferUIDisplayText, counterofferUIDisplayTextStyle);
             }
 
             bool productManagerAppOpened = ProductManagerApp.Instance.isOpen;
 
-            if (GetConfigurationFlag(Flags.ProductEvaluatorEnabled) && !homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
+            if (GetConfigurationFlag(Options.ProductEvaluatorEnabled) && !homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
             {
                 InitializeProductManagerAppUI();
 

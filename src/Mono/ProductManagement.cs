@@ -177,7 +177,7 @@ namespace DealOptimizer_Mono
         {
             static void Postfix(ProductEntry entry)
             {
-                if (!GetConfigurationFlag(Flags.ProductEvaluatorEnabled))
+                if (!GetConfigurationFlag(Options.ProductEvaluatorEnabled))
                 {
                     return;
                 }
