@@ -157,7 +157,7 @@ namespace DealOptimizer_IL2CPP
                 int maxIterations = 30;
                 int iterations = 0;
 
-                bool printCalcToConsole = PrintCalculationsToConsole.Value;
+                bool printCalcToConsole = ModConfiguration.PrintCalculationsToConsole.Value;
                 if (printCalcToConsole)
                 {
                     Melon<Core>.Logger.Msg($"Binary Search Start - Price: {playerPrice}, MaxSpend: {maxSpend}, Quantity: {playerQuantity}, MinProbability: {minSuccessProbability}");
@@ -234,8 +234,8 @@ namespace DealOptimizer_IL2CPP
 
             public static string GenerateAdditionalText(OfferData offerData, Decimal maxSpend)
             {
-                bool isPricePerUnitDisplayEnabled = PricePerUnitDisplay.Value;
-                bool isMaxDailySpendDisplayEnabled = MaximumDailySpendDisplay.Value;
+                bool isPricePerUnitDisplayEnabled = ModConfiguration.PricePerUnitDisplay.Value;
+                bool isMaxDailySpendDisplayEnabled = ModConfiguration.MaximumDailySpendDisplay.Value;
 
                 if (!isPricePerUnitDisplayEnabled && !isMaxDailySpendDisplayEnabled)
                 {
@@ -271,7 +271,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(ProductDefinition product, int quantity, float price, MSGConversation _conversation, Action<ProductDefinition, int, float> _orderConfirmedCallback)
             {
-                if (!CounterofferOptimizationEnabled.Value)
+                if (!ModConfiguration.CounterofferOptimizationEnabled.Value)
                 {
                     return;
                 }
@@ -285,7 +285,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(int change)
             {
-                if (!CounterofferOptimizationEnabled.Value)
+                if (!ModConfiguration.CounterofferOptimizationEnabled.Value)
                 {
                     return;
                 }
@@ -308,7 +308,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(float change)
             {
-                if (!CounterofferOptimizationEnabled.Value)
+                if (!ModConfiguration.CounterofferOptimizationEnabled.Value)
                 {
                     return;
                 }
@@ -436,7 +436,7 @@ namespace DealOptimizer_IL2CPP
 
         private static bool EvaluateCounterOffer(OfferData offerData)
         {
-            bool printCalcToConsole = PrintCalculationsToConsole.Value;
+            bool printCalcToConsole = ModConfiguration.PrintCalculationsToConsole.Value;
             if (printCalcToConsole)
             {
                 Melon<Core>.Logger.Msg("========================= Evaluation Start =========================");
@@ -496,7 +496,7 @@ namespace DealOptimizer_IL2CPP
         {
             static void Postfix(Contract contract, Customer customer, EMode mode, Action<EHandoverOutcome, List<ItemInstance>, float> callback, Func<List<ItemInstance>, float, float> successChanceMethod)
             {
-                if (!StreetDealOptimizationEnabled.Value)
+                if (!ModConfiguration.StreetDealOptimizationEnabled.Value)
                 {
                     return;
                 }
@@ -516,21 +516,16 @@ namespace DealOptimizer_IL2CPP
 
         public override void OnInitializeMelon()
         {
-            SetupConfiguration();
+            if (!ModConfiguration.CheckDependency())
+            {
+                LoggerInstance.Warning("Mod Manager Phone App mod not found");
+            }
+
+            ModConfiguration.SetupConfiguration();
 
             InitializeCounterofferUI();
 
             LoggerInstance.Msg("Initialized Mod");
-        }
-
-        public override void OnDeinitializeMelon()
-        {
-            try
-            {
-                ModManagerPhoneApp.ModSettingsEvents.OnPreferencesSaved -= HandleSettingsUpdate;
-                LoggerInstance.Msg("Unsubscribed from Mod Manager save event.");
-            }
-            catch { /* Ignore errors */ }
         }
 
         private void InitializeCounterofferUI()
@@ -560,14 +555,14 @@ namespace DealOptimizer_IL2CPP
             bool homeScreenOpened = PlayerSingleton<HomeScreen>.Instance.isOpen;
             bool counterofferInterfaceOpened = PlayerSingleton<MessagesApp>.Instance != null && PlayerSingleton<MessagesApp>.Instance.CounterofferInterface.IsOpen;
 
-            if (CounterofferOptimizationEnabled.Value && !homeScreenOpened && counterofferInterfaceOpened)
+            if (ModConfiguration.CounterofferOptimizationEnabled.Value && !homeScreenOpened && counterofferInterfaceOpened)
             {
                 GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterofferUIDisplayText, counterofferUIDisplayTextStyle);
             }
 
             bool productManagerAppOpened = ProductManagerApp.Instance.isOpen;
 
-            if (ProductEvaluatorEnabled.Value && !homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
+            if (ModConfiguration.ProductEvaluatorEnabled.Value && !homeScreenOpened && productManagerAppOpened && selectedProductForEvaluation != null)
             {
                 InitializeProductManagerAppUI();
 

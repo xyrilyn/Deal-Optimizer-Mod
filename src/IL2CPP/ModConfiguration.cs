@@ -1,9 +1,8 @@
 ﻿using MelonLoader;
-using ModManagerPhoneApp;
 
 namespace DealOptimizer_IL2CPP
 {
-    public partial class Core
+    public class ModConfiguration
     {
         // 01_Counteroffer
         public static MelonPreferences_Entry<bool> CounterofferOptimizationEnabled;
@@ -19,18 +18,8 @@ namespace DealOptimizer_IL2CPP
         // 09_Debug
         public static MelonPreferences_Entry<bool> PrintCalculationsToConsole;
 
-        private void SetupConfiguration()
+        public static void SetupConfiguration()
         {
-            try
-            {
-                ModManagerPhoneApp.ModSettingsEvents.OnPreferencesSaved += HandleSettingsUpdate;
-                LoggerInstance.Msg("Successfully subscribed to Mod Manager save event.");
-            }
-            catch (Exception ex) // Catches TypeLoadException if DLL missing, or other errors
-            {
-                LoggerInstance.Warning($"Could not subscribe to Mod Manager event (Mod Manager may not be installed/compatible): {ex.Message}");
-            }
-
             var categoryCounteroffer = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_01_Counteroffer", "Counteroffer Settings");
             CounterofferOptimizationEnabled = categoryCounteroffer.CreateEntry("CounterofferOptimizationEnabled", true, "Enable optimization for Counteroffers");
             PricePerUnitDisplay = categoryCounteroffer.CreateEntry("PricePerUnitDisplay", true, "Display price per unit in UI");
@@ -46,9 +35,12 @@ namespace DealOptimizer_IL2CPP
             PrintCalculationsToConsole = categoryDebug.CreateEntry("PrintCalculationsToConsole", false, "Print all calculation steps");
         }
 
-        private void HandleSettingsUpdate()
+        public static bool CheckDependency()
         {
-            LoggerInstance.Msg("Melon preferences updated");
+            string assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            string modDirectory = Path.GetDirectoryName(assemblyLocation);
+            string dllPath = Path.Combine(modDirectory, "ModManager&PhoneApp.dll");
+            return File.Exists(dllPath);
         }
     }
 }
