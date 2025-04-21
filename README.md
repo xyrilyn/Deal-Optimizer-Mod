@@ -31,25 +31,28 @@ A MelonLoader mod that optimizes deals for the Steam game [Schedule I](https://s
 
 ## Configuration
 > [!TIP]
-> `[Mono-only]` When the mod is loaded in-game for the first time, a placeholder configuration file is created for you and can be found at `SteamLibrary\steamapps\common\Schedule I\Mods\DealOptimizer\DealOptimizer_Config.json`
+> `[Mono-only]`: `SteamLibrary\steamapps\common\Schedule I\Mods\DealOptimizer\DealOptimizer_Config.json`
 > 
-> `[IL2CPP-only]` Mod configuration is stored in the Melon Preferences found at `SteamLibrary\steamapps\common\Schedule I\UserData\MelonPreferences.cfg`
+> `[IL2CPP-only]`: `SteamLibrary\steamapps\common\Schedule I\UserData\MelonPreferences.cfg`
 
 * The configuration options below work for both versions of this mod - however, they are configured in different ways
-* For Mono: Exit the game. Manually edit `DealOptimizer_Config.json` in any text editor. Save the file and then run the game.
+* For Mono:
+    * If the configuration file does not exist, it will be created on starting the game.
+    * Exit the game. Manually edit `DealOptimizer_Config.json` in any text editor. Save the file and then run the game.
 * For IL2CPP:
     * Method One: Exit the game. Manually edit `MelonPreferences.cfg` in any text editor. Save the file and then run the game.
     * Method Two: Install [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) and use it to configure this mod.
-* If editing files manually: to enable a flag, change its value to "true"; to disable a flag, change its value to "false"
 
-| Flags | Description | Default |
+| Options | Description | Default |
 | - | - | - |
-| CounterofferOptimizationEnabled | Enable optimization for Counteroffers | Enabled |
-| PricePerUnitDisplay | Display the price per unit in the Counteroffer UI | Enabled |
-| MaximumDailySpendDisplay | Display the customer's maximum daily spend in the Counteroffer UI | Enabled |
-| StreetDealOptimizationEnabled | Enable optimization for Street Deals | Enabled |
-| ProductEvaluatorEnabled | Enable Product Evaluator feature | Enabled |
-| PrintCalculationsToConsole | Print calculation steps to the MelonLoader console | Disabled |
+| CounterofferUIEnabled | Enable the Counteroffer UI | true |
+| PricePerUnitDisplay | Display the price per unit in the Counteroffer UI | true |
+| MaximumDailySpendDisplay | Display the customer's maximum daily spend in the Counteroffer UI | true |
+| CounterofferOptimizationEnabled | Enable optimization for Counteroffers | true |
+| MinimumSuccessProbability | Minimum success % for optimization | 98 |
+| StreetDealOptimizationEnabled | Enable optimization for Street Deals | true |
+| ProductEvaluatorEnabled | Enable Product Evaluator feature | false |
+| PrintCalculationsToConsole | Print calculation steps to the MelonLoader console | false |
 
 ## Building
 
