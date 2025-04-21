@@ -20,7 +20,7 @@ using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 using Il2CppScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_IL2CPP.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.0", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.1", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -149,13 +149,14 @@ namespace DealOptimizer_IL2CPP
                 return (maxSpend, dailyAverage);
             }
 
-            public static int FindOptimalPrice(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, float maxSpend, float minSuccessProbability = 0.98f)
+            public static int FindOptimalPrice(Customer customer, ProductDefinition customerProduct, int customerQuantity, float customerPrice, ProductDefinition playerProduct, int playerQuantity, float playerPrice, float maxSpend)
             {
                 int low = (int)playerPrice;
                 int high = (int)maxSpend;
-                int bestFailingPrice = (int)playerPrice;
+                int bestPrice = (int)playerPrice;
                 int maxIterations = 30;
                 int iterations = 0;
+                float minSuccessProbability = ModConfiguration.MinimumSuccessProbability.Value / 100f;
 
                 bool printCalcToConsole = ModConfiguration.PrintCalculationsToConsole.Value;
                 if (printCalcToConsole)
@@ -183,13 +184,13 @@ namespace DealOptimizer_IL2CPP
                         low = mid + 1;
                         if (low == high)
                         {
-                            bestFailingPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
+                            bestPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
                             break;
                         }
                     }
                     else
                     {
-                        bestFailingPrice = mid;
+                        bestPrice = mid;
                         high = mid;
                     }
                     iterations++;
@@ -198,11 +199,11 @@ namespace DealOptimizer_IL2CPP
                 if (printCalcToConsole)
                 {
                     Melon<Core>.Logger.Msg($"Binary Search Complete:");
-                    Melon<Core>.Logger.Msg($"  Final bestFailingPrice: {bestFailingPrice}");
+                    Melon<Core>.Logger.Msg($"  Final bestPrice: {bestPrice}");
                     Melon<Core>.Logger.Msg($"  Final range: low={low}, high={high}");
                 }
 
-                return bestFailingPrice;
+                return bestPrice;
             }
         }
 
@@ -555,7 +556,7 @@ namespace DealOptimizer_IL2CPP
             bool homeScreenOpened = PlayerSingleton<HomeScreen>.Instance.isOpen;
             bool counterofferInterfaceOpened = PlayerSingleton<MessagesApp>.Instance != null && PlayerSingleton<MessagesApp>.Instance.CounterofferInterface.IsOpen;
 
-            if (ModConfiguration.CounterofferOptimizationEnabled.Value && !homeScreenOpened && counterofferInterfaceOpened)
+            if (ModConfiguration.CounterofferOptimizationEnabled.Value && ModConfiguration.CounterofferUIEnabled.Value && !homeScreenOpened && counterofferInterfaceOpened)
             {
                 GUI.Label(new Rect((Screen.width / 2) - 190, (Screen.height / 2) - 250, 380, 70), counterofferUIDisplayText, counterofferUIDisplayTextStyle);
             }
