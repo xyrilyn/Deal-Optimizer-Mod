@@ -20,7 +20,7 @@ using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 using Il2CppScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_IL2CPP.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.0", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.1", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP

@@ -29,7 +29,7 @@ namespace DealOptimizer_IL2CPP
             StreetDealOptimizationEnabled = categoryStreetDeals.CreateEntry("StreetDealOptimizationEnabled", true, "Enable optimization for Street Deals");
 
             var categoryProductEvaluator = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_03_Product_Evaluator", "Product Evaluator Settings");
-            ProductEvaluatorEnabled = categoryProductEvaluator.CreateEntry("ProductEvaluatorEnabled", true, "Enable Product Evaluator feature");
+            ProductEvaluatorEnabled = categoryProductEvaluator.CreateEntry("ProductEvaluatorEnabled", false, "Enable Product Evaluator feature");
 
             var categoryDebug = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_09_Debug", "Debug Settings (May Cause Lag)");
             PrintCalculationsToConsole = categoryDebug.CreateEntry("PrintCalculationsToConsole", false, "Print all calculation steps");
