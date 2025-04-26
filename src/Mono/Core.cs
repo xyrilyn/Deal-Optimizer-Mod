@@ -20,7 +20,7 @@ using static ScheduleOne.UI.Handover.HandoverScreen;
 using ScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_Mono.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.2", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.3", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono
@@ -164,7 +164,7 @@ namespace DealOptimizer_Mono
                     Melon<Core>.Logger.Msg($"Binary Search Start - Price: {playerPrice}, MaxSpend: {maxSpend}, Quantity: {playerQuantity}, MinProbability: {minSuccessProbability}");
                 }
 
-                while (iterations < maxIterations && low < high)
+                while (iterations < maxIterations && low <= high)
                 {
                     int mid = (low + high) / 2;
                     float probability = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid);
@@ -181,18 +181,14 @@ namespace DealOptimizer_Mono
 
                     if (success)
                     {
+                        bestPrice = mid;
                         low = mid + 1;
-                        if (low == high)
-                        {
-                            bestPrice = CalculateSuccessProbability(customer, customerProduct, customerQuantity, customerPrice, playerProduct, playerQuantity, mid + 1) > minSuccessProbability ? mid + 1 : mid;
-                            break;
-                        }
                     }
                     else
                     {
-                        bestPrice = mid;
-                        high = mid;
+                        high = mid - 1;
                     }
+
                     iterations++;
                 }
 
