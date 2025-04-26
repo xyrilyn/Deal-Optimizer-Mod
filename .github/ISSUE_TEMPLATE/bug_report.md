@@ -20,6 +20,9 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
+**Console Logs**
+If applicable, enable "PrintCalculationsToConsole" via the mod configuration options, and share some Melon console logs that are related to the bug
+
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
