@@ -20,7 +20,7 @@ using static ScheduleOne.UI.Handover.HandoverScreen;
 using ScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_Mono.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.3", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_Mono.Core), "DealOptimizer_Mono", "1.3.4", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_Mono
@@ -52,11 +52,11 @@ namespace DealOptimizer_Mono
             {
                 CustomerData customerData = customer.CustomerData;
 
-                float valueProposition = Customer.GetValueProposition(customerProduct, customerPrice / customerQuantity);
+                float valueProposition = Customer.GetValueProposition(customerProduct, customerPrice / (float)customerQuantity);
                 float productEnjoyment = customer.GetProductEnjoyment(playerProduct, customerData.Standards.GetCorrespondingQuality());
                 float enjoymentNormalized = Mathf.InverseLerp(-1f, 1f, productEnjoyment);
-                float newValueProposition = Customer.GetValueProposition(playerProduct, playerPrice / playerQuantity);
-                float quantityRatio = Mathf.Pow(playerQuantity / customerQuantity, 0.6f);
+                float newValueProposition = Customer.GetValueProposition(playerProduct, playerPrice / (float)playerQuantity);
+                float quantityRatio = Mathf.Pow((float)playerQuantity / (float)customerQuantity, 0.6f);
                 float quantityMultiplier = Mathf.Lerp(0f, 2f, quantityRatio * 0.5f);
                 float penaltyMultiplier = Mathf.Lerp(1f, 0f, Mathf.Abs(quantityMultiplier - 1f));
 
@@ -66,6 +66,8 @@ namespace DealOptimizer_Mono
                     Melon<Core>.Logger.Msg($"Product Enjoyment (Normalized) : {enjoymentNormalized}");
                     Melon<Core>.Logger.Msg($"Customer Value Proposition     : {valueProposition}");
                     Melon<Core>.Logger.Msg($"Player Value Proposition       : {newValueProposition}");
+                    Melon<Core>.Logger.Msg($"Quantity Ratio                 : {quantityRatio}");
+                    Melon<Core>.Logger.Msg($"Quantity Multiplier            : {quantityMultiplier}");
                     Melon<Core>.Logger.Msg($"Qty Change Penalty Multiplier  : {penaltyMultiplier}");
                 }
 
@@ -126,7 +128,7 @@ namespace DealOptimizer_Mono
                 float normalizedRelationship = customer.NPC.RelationData.RelationDelta / 5f;
                 float adjustedWeeklySpend = customerData.GetAdjustedWeeklySpend(normalizedRelationship);
                 var orderDays = customerData.GetOrderDays(customer.CurrentAddiction, normalizedRelationship);
-                float dailyAverage = adjustedWeeklySpend / orderDays.Count;
+                float dailyAverage = adjustedWeeklySpend / (float)orderDays.Count;
                 float maxSpend = dailyAverage * 3f;
 
                 if (printCalcToConsole)
@@ -247,7 +249,7 @@ namespace DealOptimizer_Mono
                     {
                         sb.AppendLine();
                     }
-                    sb.Append($"Price per unit: {offerData.Price / offerData.Quantity}");
+                    sb.Append($"Price per unit: {offerData.Price / (float)offerData.Quantity}");
                 }
 
                 if (isMaxDailySpendDisplayEnabled)
@@ -449,9 +451,6 @@ namespace DealOptimizer_Mono
             {
                 Melon<Core>.Logger.Msg("========================= Evaluation Start =========================");
                 Melon<Core>.Logger.Msg($"Customer Name: {offerData.Customer.name}");
-                Melon<Core>.Logger.Msg($"Product: {offerData.Product.ID}");
-                Melon<Core>.Logger.Msg($"Quantity: {offerData.Quantity}");
-                Melon<Core>.Logger.Msg($"Price: {offerData.Price}");
             }
 
             var (maxSpend, dailyAverage) = DealCalculator.CalculateSpendingLimits(offerData.Customer, printCalcToConsole);
@@ -469,6 +468,17 @@ namespace DealOptimizer_Mono
             }
 
             OfferData customerContractData = GetCustomerContractData(offerData.Customer);
+
+            if (printCalcToConsole)
+            {
+                Melon<Core>.Logger.Msg($"Customer Product: {customerContractData.Product.ID}");
+                Melon<Core>.Logger.Msg($"Customer Quantity: {customerContractData.Quantity}");
+                Melon<Core>.Logger.Msg($"Customer Price: {customerContractData.Price}");
+                Melon<Core>.Logger.Msg($"Player Product: {offerData.Product.ID}");
+                Melon<Core>.Logger.Msg($"Player Quantity: {offerData.Quantity}");
+                Melon<Core>.Logger.Msg($"Player Price: {offerData.Price}");
+            }
+
             float probability = DealCalculator.CalculateSuccessProbability(customerContractData, offerData, printCalcToConsole);
             decimal probabilityPercent = Math.Round((decimal)(probability * 100), 3);
 
