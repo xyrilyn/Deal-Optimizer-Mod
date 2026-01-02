@@ -20,7 +20,7 @@ using static Il2CppScheduleOne.UI.Handover.HandoverScreen;
 using Il2CppScheduleOne.UI.Phone.ProductManagerApp;
 using static DealOptimizer_IL2CPP.UIUtils;
 
-[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.3.4", "xyrilyn, zocke1r", null)]
+[assembly: MelonInfo(typeof(DealOptimizer_IL2CPP.Core), "DealOptimizer_IL2CPP", "1.4.0", "xyrilyn, zocke1r", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace DealOptimizer_IL2CPP
@@ -201,6 +201,14 @@ namespace DealOptimizer_IL2CPP
                     Melon<Core>.Logger.Msg($"  Final range: low={low}, high={high}");
                 }
 
+                // Check for off-by-one max spend limit
+                var (maxSpendLimit, _) = DealCalculator.CalculateSpendingLimits(customer, false);
+                decimal maxSpendLimitDecimal = Math.Round((decimal)maxSpend, 2);
+                if (bestPrice >= maxSpendLimit)
+                {
+                    bestPrice--;
+                }
+
                 return bestPrice;
             }
         }
@@ -293,14 +301,14 @@ namespace DealOptimizer_IL2CPP
             }
         }
 
-        //[HarmonyPatch(typeof(CounterOfferProductSelector), "ProductSelected")]
-        //static class CounterOfferProductSelectorPostfixProductSelected
-        //{
-        //    static void Postfix(ProductDefinition def)
-        //    {
-        //        OptimizeCounterofferThenEvaluate();
-        //    }
-        //}
+        [HarmonyPatch(typeof(CounterOfferProductSelector), "ProductSelected")]
+        static class CounterOfferProductSelectorPostfixProductSelected
+        {
+            static void Postfix(ProductDefinition def)
+            {
+                OptimizeCounterofferThenEvaluate();
+            }
+        }
 
         [HarmonyPatch(typeof(CounterofferInterface), nameof(CounterofferInterface.ChangePrice))]
         static class CounterofferInterfacePostfixChangePrice
