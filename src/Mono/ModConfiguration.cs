@@ -1,106 +1,46 @@
-﻿
-using Newtonsoft.Json;
+﻿using MelonLoader;
 
 namespace DealOptimizer_Mono
 {
-    public partial class Core
+    public class ModConfiguration
     {
-        private static ModConfiguration modConfiguration;
+        // 01_Counteroffer
+        public static MelonPreferences_Entry<bool> CounterofferUIEnabled;
+        public static MelonPreferences_Entry<bool> PricePerUnitDisplay;
+        public static MelonPreferences_Entry<bool> MaximumDailySpendDisplay;
 
-        private class ModConfiguration
+        // 02_Counteroffer_Optimization
+        public static MelonPreferences_Entry<bool> CounterofferOptimizationEnabled;
+        public static MelonPreferences_Entry<int> MinimumSuccessProbability;
+
+        // 03_Street Deals
+        public static MelonPreferences_Entry<bool> StreetDealOptimizationEnabled;
+
+        // 04_Product_Evaluator
+        public static MelonPreferences_Entry<bool> ProductEvaluatorEnabled;
+
+        // 09_Debug
+        public static MelonPreferences_Entry<bool> PrintCalculationsToConsole;
+
+        public static void SetupConfiguration()
         {
-            public Dictionary<string, string> Options { get; }
+            var categoryCounteroffer = MelonPreferences.CreateCategory("DealOptimizer_01_Counteroffer", "Counteroffer Settings");
+            CounterofferUIEnabled = categoryCounteroffer.CreateEntry("CounterofferUI", true, "Enable Counteroffer UI");
+            PricePerUnitDisplay = categoryCounteroffer.CreateEntry("PricePerUnitDisplay", true, "Display price per unit in UI");
+            MaximumDailySpendDisplay = categoryCounteroffer.CreateEntry("MaximumDailySpendDisplay", true, "Display customer's max daily spend in UI");
 
-            public ModConfiguration()
-            {
-                Options = new Dictionary<string, string>();
-            }
+            var categoryCounterofferOptimization = MelonPreferences.CreateCategory("DealOptimizer_02_Counteroffer_Optimization", "Counteroffer Optimization Settings");
+            CounterofferOptimizationEnabled = categoryCounterofferOptimization.CreateEntry("CounterofferOptimizationEnabled", true, "Enable optimization for Counteroffers");
+            MinimumSuccessProbability = categoryCounterofferOptimization.CreateEntry("MinimumSuccessProbability", 98, "Min. success % for optimization");
 
-            public ModConfiguration(Dictionary<string, string> options)
-            {
-                Options = options;
-            }
-        }
+            var categoryStreetDeals = MelonPreferences.CreateCategory("DealOptimizer_03_Street_Deals", "Street Deals Settings");
+            StreetDealOptimizationEnabled = categoryStreetDeals.CreateEntry("StreetDealOptimizationEnabled", true, "Enable optimization for Street Deals");
 
-        public static class Options
-        {
-            public static readonly string CounterofferUIEnabled = "CounterofferUIEnabled";
-            public static readonly string PricePerUnitDisplay = "PricePerUnitDisplay";
-            public static readonly string MaximumDailySpendDisplay = "MaximumDailySpendDisplay";
+            var categoryProductEvaluator = MelonPreferences.CreateCategory("DealOptimizer_04_Product_Evaluator", "Product Evaluator Settings");
+            ProductEvaluatorEnabled = categoryProductEvaluator.CreateEntry("ProductEvaluatorEnabled", false, "Enable Product Evaluator feature");
 
-            public static readonly string CounterofferOptimizationEnabled = "CounterofferOptimizationEnabled";
-            public static readonly string MinimumSuccessProbability = "MinimumSuccessProbability";
-
-            public static readonly string StreetDealOptimizationEnabled = "StreetDealOptimizationEnabled";
-
-            public static readonly string ProductEvaluatorEnabled = "ProductEvaluatorEnabled";
-
-            public static readonly string PrintCalculationsToConsole = "PrintCalculationsToConsole";
-        }
-
-        private static readonly ModConfiguration defaultModConfiguration = new ModConfiguration(
-            new Dictionary<string, string>
-            {
-                [Options.CounterofferUIEnabled] = "true",
-                [Options.PricePerUnitDisplay] = "true",
-                [Options.MaximumDailySpendDisplay] = "true",
-
-                [Options.CounterofferOptimizationEnabled] = "true",
-                [Options.MinimumSuccessProbability] = "98",
-
-                [Options.StreetDealOptimizationEnabled] = "true",
-
-                [Options.ProductEvaluatorEnabled] = "false",
-
-                [Options.PrintCalculationsToConsole] = "false",
-            }
-        );
-
-        private void SetupConfiguration()
-        {
-            string assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string modDirectory = Path.GetDirectoryName(assemblyLocation);
-            string configPath = Path.Combine(modDirectory, "DealOptimizer", "DealOptimizer_Config.json");
-
-            LoggerInstance.Msg($"Config Path: {configPath}");
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath));
-
-            if (!File.Exists(configPath))
-            {
-                modConfiguration = defaultModConfiguration;
-                using (StreamWriter file = File.CreateText(configPath))
-                {
-                    JsonSerializer serializer = new JsonSerializer();
-                    serializer.Formatting = Formatting.Indented;
-                    serializer.Serialize(file, defaultModConfiguration);
-                }
-            }
-            else
-            {
-                try
-                {
-                    using (StreamReader reader = new StreamReader(configPath))
-                    {
-                        string json = reader.ReadToEnd();
-                        modConfiguration = JsonConvert.DeserializeObject<ModConfiguration>(json);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LoggerInstance.Error($"Invalid mod configuration (will use defaults as fallback)", ex);
-                    modConfiguration = defaultModConfiguration;
-                }
-            }
-        }
-
-        private static bool GetConfigurationFlag(string name)
-        {
-            return bool.Parse(modConfiguration.Options.GetValueOrDefault(name, defaultModConfiguration.Options[name]));
-        }
-
-        private static int GetConfigurationInt(string name)
-        {
-            return int.Parse(modConfiguration.Options.GetValueOrDefault(name, defaultModConfiguration.Options[name]));
+            var categoryDebug = MelonPreferences.CreateCategory("DealOptimizer_09_Debug", "Debug Settings (May Cause Lag)");
+            PrintCalculationsToConsole = categoryDebug.CreateEntry("PrintCalculationsToConsole", false, "Print all calculation steps");
         }
     }
 }
