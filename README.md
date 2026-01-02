@@ -11,6 +11,7 @@ A MelonLoader mod that optimizes deals for the Steam game [Schedule I](https://s
 * Attempts to set a price for the current quantity that has the highest probability of success during Counteroffers
 * Automatically sets the maximum daily cash the customer has during Offers
 * Adds a Product Evaluator window to the Product Manager App in your phone to check whether customers will buy your product (from yourself or their dealers) and for how much
+* Supports manual mod configuration via `UserData/MelonPreferences.cfg`
 * `[IL2CPP-only]` Supports mod configuration via the [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) with live updates
 
 ## Installation
@@ -31,17 +32,13 @@ A MelonLoader mod that optimizes deals for the Steam game [Schedule I](https://s
 
 ## Configuration
 > [!TIP]
-> `[Mono-only]`: `SteamLibrary\steamapps\common\Schedule I\Mods\DealOptimizer\DealOptimizer_Config.json`
-> 
-> `[IL2CPP-only]`: `SteamLibrary\steamapps\common\Schedule I\UserData\MelonPreferences.cfg`
+> The Melon Preferences file is located at `Schedule I\UserData\MelonPreferences.cfg`
 
-* The configuration options below work for both versions of this mod - however, they are configured in different ways
 * For Mono:
-    * If the configuration file does not exist, it will be created on starting the game.
-    * Exit the game. Manually edit `DealOptimizer_Config.json` in any text editor. Save the file and then run the game.
+    * Exit the game. Manually edit `MelonPreferences.cfg` in any text editor. Save the file and then run the game.
 * For IL2CPP:
-    * Method One: Exit the game. Manually edit `MelonPreferences.cfg` in any text editor. Save the file and then run the game.
-    * Method Two: Install [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) and use it to configure this mod.
+    * Method 1: Exit the game. Manually edit `MelonPreferences.cfg` in any text editor. Save the file and then run the game.
+    * Method 2: Install [Mod Manager Phone App mod](https://www.nexusmods.com/schedule1/mods/397) and use it to configure this mod.
 
 | Options | Description | Default |
 | - | - | - |
