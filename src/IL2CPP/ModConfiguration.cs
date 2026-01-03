@@ -24,22 +24,22 @@ namespace DealOptimizer_IL2CPP
 
         public static void SetupConfiguration()
         {
-            var categoryCounteroffer = MelonPreferences.CreateCategory("DealOptimizer_01_Counteroffer", "Counteroffer Settings");
+            var categoryCounteroffer = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_01_Counteroffer", "Counteroffer Settings");
             CounterofferUIEnabled = categoryCounteroffer.CreateEntry("CounterofferUI", true, "Enable Counteroffer UI");
             PricePerUnitDisplay = categoryCounteroffer.CreateEntry("PricePerUnitDisplay", true, "Display price per unit in UI");
             MaximumDailySpendDisplay = categoryCounteroffer.CreateEntry("MaximumDailySpendDisplay", true, "Display customer's max daily spend in UI");
 
-            var categoryCounterofferOptimization = MelonPreferences.CreateCategory("DealOptimizer_02_Counteroffer_Optimization", "Counteroffer Optimization Settings");
+            var categoryCounterofferOptimization = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_02_Counteroffer_Optimization", "Counteroffer Optimization Settings");
             CounterofferOptimizationEnabled = categoryCounterofferOptimization.CreateEntry("CounterofferOptimizationEnabled", true, "Enable optimization for Counteroffers");
             MinimumSuccessProbability = categoryCounterofferOptimization.CreateEntry("MinimumSuccessProbability", 98, "Min. success % for optimization");
             
-            var categoryStreetDeals = MelonPreferences.CreateCategory("DealOptimizer_03_Street_Deals", "Street Deals Settings");
+            var categoryStreetDeals = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_03_Street_Deals", "Street Deals Settings");
             StreetDealOptimizationEnabled = categoryStreetDeals.CreateEntry("StreetDealOptimizationEnabled", true, "Enable optimization for Street Deals");
 
-            var categoryProductEvaluator = MelonPreferences.CreateCategory("DealOptimizer_04_Product_Evaluator", "Product Evaluator Settings");
+            var categoryProductEvaluator = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_04_Product_Evaluator", "Product Evaluator Settings");
             ProductEvaluatorEnabled = categoryProductEvaluator.CreateEntry("ProductEvaluatorEnabled", false, "Enable Product Evaluator feature");
 
-            var categoryDebug = MelonPreferences.CreateCategory("DealOptimizer_09_Debug", "Debug Settings (May Cause Lag)");
+            var categoryDebug = MelonPreferences.CreateCategory("DealOptimizer_IL2CPP_09_Debug", "Debug Settings (May Cause Lag)");
             PrintCalculationsToConsole = categoryDebug.CreateEntry("PrintCalculationsToConsole", false, "Print all calculation steps");
         }
 
